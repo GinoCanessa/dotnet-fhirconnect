@@ -1,0 +1,40 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+    <!--
+      Enable floating versions in centrally-managed packages so the
+      DotnetOpenEhr `2026.*-*` range is allowed here. Per the plan,
+      DotnetOpenEhr floats to latest on every restore; without this
+      flag NuGet errors with NU1011.
+    -->
+    <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
+  </PropertyGroup>
+
+  <ItemGroup Label="Build / pack">
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Test">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageVersion Include="xunit.v3" Version="1.0.1" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.0" />
+  </ItemGroup>
+
+  <!--
+    Runtime dependencies. Per the plan, DotnetOpenEhr floats to the
+    latest beta in the 2026.* line; this is the single place to bump
+    the floor or escape-hatch off the floating range.
+  -->
+  <ItemGroup Label="Runtime">
+    <PackageVersion Include="DotnetOpenEhr" Version="2026.*-*" />
+    <PackageVersion Include="Hl7.Fhir.R4" Version="6.2.0" />
+    <PackageVersion Include="Hl7.Fhir.R4B" Version="6.2.0" />
+    <PackageVersion Include="Hl7.Fhir.R5" Version="6.2.0" />
+    <PackageVersion Include="System.CommandLine" Version="3.0.0-preview.4.26230.115" />
+    <PackageVersion Include="YamlDotNet" Version="18.0.0" />
+    <PackageVersion Include="JsonSchema.Net" Version="9.2.1" />
+  </ItemGroup>
+
+</Project>

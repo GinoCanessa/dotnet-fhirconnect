@@ -1,0 +1,31 @@
+<Project>
+
+  <!--
+    Guard: every project under src/ marked _IsShippingProject must keep
+    AOT/trim flags on. The Directory.Build.props above defaults these
+    on, so this target only fires if a csproj explicitly opts out.
+  -->
+  <Target Name="_RequireAotFlagsOnShippingProjects"
+          BeforeTargets="CoreCompile"
+          Condition="'$(_IsShippingProject)' == 'true'">
+    <Error Condition="'$(IsAotCompatible)' != 'true'"
+           Text="Shipping project '$(MSBuildProjectName)' must set &lt;IsAotCompatible&gt;true&lt;/IsAotCompatible&gt;." />
+    <Error Condition="'$(IsTrimmable)' != 'true'"
+           Text="Shipping project '$(MSBuildProjectName)' must set &lt;IsTrimmable&gt;true&lt;/IsTrimmable&gt;." />
+  </Target>
+
+  <!--
+    Fixture copy for test projects. Any csproj that sets
+    <IsTestProject>true</IsTestProject> picks up the tests/fixtures tree
+    under bin/.../fixtures/. The library and CLI projects do not set
+    IsTestProject and therefore do not get fixtures embedded.
+  -->
+  <ItemGroup Condition="'$(IsTestProject)' == 'true' AND Exists('$(MSBuildThisFileDirectory)tests\fixtures')">
+    <Content Include="$(MSBuildThisFileDirectory)tests\fixtures\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <LinkBase>fixtures</LinkBase>
+      <Visible>false</Visible>
+    </Content>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,59 @@
+<Project>
+
+  <PropertyGroup Label="Compile">
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <LangVersion>preview</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+
+  <!--
+    AOT / trim posture. Apply to shipping projects under src/. Test
+    projects opt out by leaving _IsShippingProject unset.
+  -->
+  <PropertyGroup Label="AotTrim"
+                 Condition="'$(_IsShippingProject)' == 'true'">
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <IsAotCompatible>true</IsAotCompatible>
+    <IsTrimmable>true</IsTrimmable>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Package"
+                 Condition="'$(_IsShippingProject)' == 'true'">
+    <Authors>Gino Canessa</Authors>
+    <Company>Gino Canessa</Company>
+    <Copyright>Copyright (c) 2026 Gino Canessa and the DotnetFhirConnect contributors</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/ginoc/dotnet-fhirconnect</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/ginoc/dotnet-fhirconnect</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>fhir openehr interoperability fhirconnect mapping health</PackageTags>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
+  <!-- Version stays prerelease while we depend on the DotnetOpenEhr beta. -->
+  <PropertyGroup Label="Version"
+                 Condition="'$(_IsShippingProject)' == 'true'">
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionSuffix>alpha.0</VersionSuffix>
+  </PropertyGroup>
+
+  <!-- Source-link for every shipping project. -->
+  <ItemGroup Condition="'$(_IsShippingProject)' == 'true'">
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
+  </ItemGroup>
+
+  <!-- LICENSE packed into every shipping NuGet. -->
+  <ItemGroup Condition="'$(_IsShippingProject)' == 'true'">
+    <None Include="$(MSBuildThisFileDirectory)LICENSE" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+
+</Project>

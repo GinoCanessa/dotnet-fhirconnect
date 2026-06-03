@@ -1,0 +1,15 @@
+<Project>
+
+  <!--
+    Every project under src/ ships as a NuGet package. Set this flag
+    BEFORE importing the root Directory.Build.props so the parent's
+    AOT/trim and package-metadata groups (gated on
+    _IsShippingProject == 'true') actually apply.
+  -->
+  <PropertyGroup>
+    <_IsShippingProject>true</_IsShippingProject>
+  </PropertyGroup>
+
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+</Project>

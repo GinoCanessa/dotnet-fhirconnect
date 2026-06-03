@@ -51,6 +51,11 @@ public abstract record FhirConnectMapping
     /// <exception cref="FileNotFoundException">
     /// <paramref name="path"/> does not exist.
     /// </exception>
+    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode(
+        "Routes through YamlDotNet's representation model (via MappingYamlReader). "
+        + "The reader itself avoids reflection-driven deserialization, but YamlDotNet "
+        + "still pulls TypeConverter / Reflection at the assembly level. Library is not "
+        + "AOT-publishable in v0.x.")]
     public static object Load(string path)
     {
         if (Directory.Exists(path))

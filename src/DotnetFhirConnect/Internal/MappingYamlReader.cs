@@ -39,6 +39,52 @@ internal static class MappingYamlReader
     [RequiresUnreferencedCode("See ReadFile.")]
     internal static FhirConnectMapping ReadFromReader(TextReader reader, string filePath)
     {
+        YamlStream stream = LoadStream(reader, filePath);
+        return ProjectRoot(stream.Documents[0].RootNode, filePath);
+    }
+
+    /// <summary>
+    /// Lower-level shared parse used by both the loader (this class)
+    /// and the validator (<c>FhirConnectValidator</c>): parse one YAML
+    /// file, return the raw <see cref="YamlMappingNode"/> root and
+    /// (separately) the typed projection. The validator runs schema
+    /// evaluation against the raw tree, then uses the typed projection
+    /// for semantic checks; the loader needs only the projection.
+    /// </summary>
+    /// <param name="filePath">Absolute file path. Used both to open the
+    /// file and to seed the resulting <c>FhirConnectFormatException</c>
+    /// messages.</param>
+    /// <returns>The raw root mapping node and the typed mapping
+    /// record. The typed projection is <c>null</c> when the grammar
+    /// declaration is unsupported — callers that only need the raw
+    /// tree (schema evaluation) can still proceed.</returns>
+    [RequiresUnreferencedCode("See ReadFile.")]
+    internal static (YamlMappingNode Root, FhirConnectMapping? Projection) ReadDocument(string filePath)
+    {
+        using StreamReader sr = new StreamReader(filePath);
+        YamlStream stream = LoadStream(sr, filePath);
+        YamlMappingNode root = ExpectMapping(stream.Documents[0].RootNode, filePath, "<root>");
+
+        // The validator wants the raw tree even when the semantic
+        // projection fails (e.g., missing required spec key). Surface
+        // the projection failure to callers via a null projection — the
+        // validator re-parses semantic shape from the raw tree and the
+        // loader's public ReadFile / FhirConnectMapping.Load throws
+        // the exception directly.
+        FhirConnectMapping? projection;
+        try
+        {
+            projection = ProjectRoot(root, filePath);
+        }
+        catch (FhirConnectFormatException)
+        {
+            projection = null;
+        }
+        return (root, projection);
+    }
+
+    private static YamlStream LoadStream(TextReader reader, string filePath)
+    {
         YamlStream stream = new YamlStream();
         try
         {
@@ -57,8 +103,12 @@ internal static class MappingYamlReader
             throw new FhirConnectFormatException(
                 $"Empty YAML stream in '{filePath}'.", filePath);
         }
+        return stream;
+    }
 
-        YamlMappingNode root = ExpectMapping(stream.Documents[0].RootNode, filePath, "<root>");
+    private static FhirConnectMapping ProjectRoot(YamlNode rootNode, string filePath)
+    {
+        YamlMappingNode root = ExpectMapping(rootNode, filePath, "<root>");
 
         string grammarString = RequireScalar(root, "grammar", filePath);
         if (!string.Equals(grammarString, SupportedGrammar, StringComparison.Ordinal))

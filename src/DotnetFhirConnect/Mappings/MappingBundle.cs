@@ -24,6 +24,9 @@ public sealed record MappingBundle(
     /// Any parse error, or two context files in the same directory
     /// (which would make <see cref="Context"/> ambiguous).
     /// </exception>
+    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode(
+        "Routes through YamlDotNet's representation model (via MappingYamlReader). "
+        + "Library is not AOT-publishable in v0.x.")]
     public static MappingBundle Load(string directory)
     {
         if (!Directory.Exists(directory))

@@ -21,4 +21,18 @@
     <PackageReference Include="JsonSchema.Net" />
   </ItemGroup>
 
+  <!--
+    Embed the patched FHIRconnect v1.0.0 JSON schemas as resources so
+    the validator does not depend on the test fixtures folder at
+    runtime. Copied at build time from tests/fixtures/spec-schemas/.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\model-mapping.schema.json">
+      <LogicalName>DotnetFhirConnect.Resources.model-mapping.schema.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\contextual-mapping.schema.json">
+      <LogicalName>DotnetFhirConnect.Resources.contextual-mapping.schema.json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

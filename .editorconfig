@@ -21,7 +21,13 @@ csharp_style_var_when_type_is_apparent = false:error
 csharp_style_var_elsewhere = false:error
 
 # `[]` collection expression form for empty / simple initializers.
-dotnet_style_prefer_collection_expression = true:error
+# Kept as a suggestion (not error) because the rule false-positives on
+# any class that implements IEnumerable (e.g. YamlStream) and on
+# constructions that carry custom comparers / capacity hints — both
+# common in this codebase. Repo style preference still favours `[]`
+# for genuinely empty / simple cases; reviewers enforce, not analyzers.
+dotnet_style_prefer_collection_expression = true:suggestion
+dotnet_diagnostic.IDE0028.severity = suggestion
 
 # Other useful repo defaults.
 csharp_new_line_before_open_brace = all

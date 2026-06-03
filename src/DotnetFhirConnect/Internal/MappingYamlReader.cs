@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using DotnetFhirConnect.Fhir;
 using DotnetFhirConnect.Mappings;
 using YamlDotNet.Core;
 using YamlDotNet.RepresentationModel;

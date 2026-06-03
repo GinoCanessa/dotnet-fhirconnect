@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DotnetFhirConnect.Fhir;
 
 namespace DotnetFhirConnect.Mappings;
 

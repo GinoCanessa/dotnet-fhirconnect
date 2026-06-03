@@ -31,22 +31,6 @@ public enum MappingType
 }
 
 /// <summary>
-/// Supported HL7 FHIR releases the loader can encounter in a
-/// mapping file's <c>spec.version</c>.
-/// </summary>
-public enum FhirRelease
-{
-    /// <summary>HL7 FHIR R4.</summary>
-    R4,
-
-    /// <summary>HL7 FHIR R4B.</summary>
-    R4B,
-
-    /// <summary>HL7 FHIR R5.</summary>
-    R5,
-}
-
-/// <summary>
 /// The <c>type: NONE</c> marker that suppresses the default
 /// path-to-path copy semantics on a <c>with:</c> block, used when a
 /// rule is purely a wrapper for nested mappings (<c>followedBy:</c>)

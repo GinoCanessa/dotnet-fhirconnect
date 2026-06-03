@@ -1,4 +1,5 @@
 using System.Linq;
+using DotnetFhirConnect.Fhir;
 using DotnetFhirConnect.Mappings;
 using Xunit;
 

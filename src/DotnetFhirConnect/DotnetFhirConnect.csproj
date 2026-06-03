@@ -15,8 +15,17 @@
   <ItemGroup>
     <PackageReference Include="DotnetOpenEhr" />
     <PackageReference Include="Hl7.Fhir.R4" />
-    <PackageReference Include="Hl7.Fhir.R4B" />
-    <PackageReference Include="Hl7.Fhir.R5" />
+    <!--
+      Hl7.Fhir.R4B and Hl7.Fhir.R5 are intentionally not referenced in
+      v0.x: the R4B / R5 adapters (Fhir/R4B/R4BAdapter.cs,
+      Fhir/R5/R5Adapter.cs) are pending stubs that do not touch the
+      Firely model types yet. Their dependencies redefine
+      Hl7.Fhir.Serialization.FhirJsonParser, FhirJsonSerializer in the
+      same namespace as R4, causing CS0433 ambiguity. The standard
+      `extern alias` escape hatch does not propagate to transitive
+      shared assemblies in NuGet, so we drop the packages for now and
+      add them back in the slot that lands the real R4B / R5 adapters.
+    -->
     <PackageReference Include="YamlDotNet" />
     <PackageReference Include="JsonSchema.Net" />
   </ItemGroup>

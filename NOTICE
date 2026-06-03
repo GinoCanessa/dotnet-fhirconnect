@@ -1,0 +1,26 @@
+DotnetFhirConnect
+Copyright (c) 2026 Gino Canessa and the DotnetFhirConnect contributors
+
+This product includes the FHIRconnect specification schemas and
+example mapping files distributed under the Apache License,
+Version 2.0:
+
+  * FHIRconnect-spec
+    Copyright (c) Sevda Kohler and the FHIRconnect contributors
+    Repository: https://github.com/SevKohler/FHIRconnect-spec
+    License:    Apache-2.0
+    Vendored at: tests/fixtures/spec-schemas/  (see PROVENANCE.md)
+
+  * FHIRconnect-mapping-lib
+    Copyright (c) Sevda Kohler and the FHIRconnect contributors
+    Repository: https://github.com/SevKohler/FHIRconnect-mapping-lib
+    License:    Apache-2.0
+    Vendored at: tests/fixtures/vital-status/  (see PROVENANCE.md)
+
+Patched copies are marked in each fixture's PROVENANCE.md with the
+upstream commit SHA, the patch diff, and a pointer to the draft
+upstream issue / PR.
+
+The hand-authored sample compositions and observations under
+tests/fixtures/vital-status/samples/ are original work for this
+repository, MIT-licensed under the repo-root LICENSE.

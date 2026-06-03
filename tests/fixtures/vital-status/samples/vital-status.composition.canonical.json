@@ -1,0 +1,153 @@
+{
+  "_type": "COMPOSITION",
+  "name": {
+    "_type": "DV_TEXT",
+    "value": "Vitalstatus"
+  },
+  "archetype_details": {
+    "archetype_id": { "value": "openEHR-EHR-COMPOSITION.report.v1" },
+    "template_id": { "value": "KDS_Vitalstatus" },
+    "rm_version": "1.0.4"
+  },
+  "archetype_node_id": "openEHR-EHR-COMPOSITION.report.v1",
+  "language": {
+    "_type": "CODE_PHRASE",
+    "terminology_id": { "_type": "TERMINOLOGY_ID", "value": "ISO_639-1" },
+    "code_string": "en"
+  },
+  "territory": {
+    "_type": "CODE_PHRASE",
+    "terminology_id": { "_type": "TERMINOLOGY_ID", "value": "ISO_3166-1" },
+    "code_string": "US"
+  },
+  "category": {
+    "_type": "DV_CODED_TEXT",
+    "value": "event",
+    "defining_code": {
+      "_type": "CODE_PHRASE",
+      "terminology_id": { "_type": "TERMINOLOGY_ID", "value": "openehr" },
+      "code_string": "433"
+    }
+  },
+  "composer": {
+    "_type": "PARTY_IDENTIFIED",
+    "name": "Dr. Test Composer"
+  },
+  "context": {
+    "_type": "EVENT_CONTEXT",
+    "start_time": {
+      "_type": "DV_DATE_TIME",
+      "value": "2026-02-19T21:14:54Z"
+    },
+    "setting": {
+      "_type": "DV_CODED_TEXT",
+      "value": "other care",
+      "defining_code": {
+        "_type": "CODE_PHRASE",
+        "terminology_id": { "_type": "TERMINOLOGY_ID", "value": "openehr" },
+        "code_string": "238"
+      }
+    },
+    "health_care_facility": {
+      "_type": "PARTY_IDENTIFIED",
+      "name": "Test Hospital"
+    },
+    "participations": [
+      {
+        "_type": "PARTICIPATION",
+        "function": {
+          "_type": "DV_TEXT",
+          "value": "performer"
+        },
+        "performer": {
+          "_type": "PARTY_IDENTIFIED",
+          "name": "Performer One"
+        }
+      }
+    ]
+  },
+  "content": [
+    {
+      "_type": "EVALUATION",
+      "name": {
+        "_type": "DV_TEXT",
+        "value": "Vital status"
+      },
+      "archetype_details": {
+        "archetype_id": { "value": "openEHR-EHR-EVALUATION.vital_status.v1" },
+        "rm_version": "1.0.4"
+      },
+      "archetype_node_id": "openEHR-EHR-EVALUATION.vital_status.v1",
+      "language": {
+        "_type": "CODE_PHRASE",
+        "terminology_id": { "_type": "TERMINOLOGY_ID", "value": "ISO_639-1" },
+        "code_string": "en"
+      },
+      "encoding": {
+        "_type": "CODE_PHRASE",
+        "terminology_id": { "_type": "TERMINOLOGY_ID", "value": "IANA_character-sets" },
+        "code_string": "UTF-8"
+      },
+      "subject": {
+        "_type": "PARTY_SELF"
+      },
+      "data": {
+        "_type": "ITEM_TREE",
+        "name": { "_type": "DV_TEXT", "value": "Tree" },
+        "archetype_node_id": "at0001",
+        "items": [
+          {
+            "_type": "ELEMENT",
+            "name": { "_type": "DV_TEXT", "value": "Vital status" },
+            "archetype_node_id": "at0006",
+            "value": {
+              "_type": "DV_CODED_TEXT",
+              "value": "alive",
+              "defining_code": {
+                "_type": "CODE_PHRASE",
+                "terminology_id": { "_type": "TERMINOLOGY_ID", "value": "local" },
+                "code_string": "at0007"
+              }
+            }
+          },
+          {
+            "_type": "ELEMENT",
+            "name": { "_type": "DV_TEXT", "value": "Note" },
+            "archetype_node_id": "at0013",
+            "value": {
+              "_type": "DV_TEXT",
+              "value": "Patient is alive and well."
+            }
+          }
+        ]
+      },
+      "protocol": {
+        "_type": "ITEM_TREE",
+        "name": { "_type": "DV_TEXT", "value": "Tree" },
+        "archetype_node_id": "at0002",
+        "items": [
+          {
+            "_type": "ELEMENT",
+            "name": { "_type": "DV_TEXT", "value": "Effective" },
+            "archetype_node_id": "at0018",
+            "value": {
+              "_type": "DV_DATE_TIME",
+              "value": "2026-02-19T21:14:54Z"
+            }
+          }
+        ]
+      },
+      "links": [
+        {
+          "_type": "LINK",
+          "meaning": { "_type": "DV_TEXT", "value": "Part of referenced event" },
+          "type": { "_type": "DV_TEXT", "value": "partOf" },
+          "target": {
+            "_type": "DV_EHR_URI",
+            "value": "ehr:///compositions/00000000-0000-0000-0000-000000000001"
+          }
+        }
+      ]
+    }
+  ]
+}

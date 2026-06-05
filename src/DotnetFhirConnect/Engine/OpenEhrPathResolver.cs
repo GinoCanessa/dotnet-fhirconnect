@@ -47,16 +47,6 @@ internal static class OpenEhrPathResolver
         if (root is Pathable pathableRoot)
         {
             object? result = ArchetypePathResolver.Resolve(pathableRoot, remainder);
-            if (result is null && pathableRoot is Locatable loc)
-            {
-                // Workaround: DotnetOpenEhr.Aql's PathNavigator only
-                // surfaces `links` (and a handful of other generic
-                // Locatable attributes) for Composition / Section /
-                // the generic Locatable fallback — not for Entry
-                // subtypes like Evaluation. Fall back to direct
-                // property access for the keys we know the SDK misses.
-                result = ResolveLocatableFallback(loc, remainder);
-            }
             return Unwrap(result);
         }
         return Unwrap(ResolveOnNonPathable(root, remainder));
@@ -72,14 +62,45 @@ internal static class OpenEhrPathResolver
     public static System.Collections.Generic.IEnumerable<object?> ResolveMany(
         BindingContext ctx, string path)
     {
-        object? value = Resolve(ctx, path);
+        (object? root, string remainder) = NormalizePath(ctx, path);
+        if (root is null)
+        {
+            yield break;
+        }
+        if (string.IsNullOrEmpty(remainder))
+        {
+            object? unwrapped = Unwrap(root);
+            if (unwrapped is null)
+            {
+                yield break;
+            }
+            if (unwrapped is System.Collections.IEnumerable rootSeq && unwrapped is not string)
+            {
+                foreach (object? item in rootSeq)
+                {
+                    yield return Unwrap(item);
+                }
+                yield break;
+            }
+            yield return unwrapped;
+            yield break;
+        }
+        if (root is Pathable pathableRoot)
+        {
+            foreach (object? item in ArchetypePathResolver.ResolveAll(pathableRoot, remainder))
+            {
+                yield return Unwrap(item);
+            }
+            yield break;
+        }
+        object? value = Unwrap(ResolveOnNonPathable(root, remainder));
         if (value is null)
         {
             yield break;
         }
-        if (value is System.Collections.IEnumerable enumerable && value is not string)
+        if (value is System.Collections.IEnumerable nonPathableSeq && value is not string)
         {
-            foreach (object? item in enumerable)
+            foreach (object? item in nonPathableSeq)
             {
                 yield return Unwrap(item);
             }
@@ -113,26 +134,6 @@ internal static class OpenEhrPathResolver
         // openEHR root. Manual fields and the few rare prefix-less
         // openEHR paths land here.
         return (ctx.OpenEhrRoot, EnsureSlash(p));
-    }
-
-    /// <summary>
-    /// Fallback access for generic <see cref="Locatable"/> attributes
-    /// the SDK's <c>PathNavigator</c> doesn't expose on Entry
-    /// subtypes (notably <c>links</c> on Evaluation/Observation/etc.).
-    /// </summary>
-    private static object? ResolveLocatableFallback(Locatable loc, string remainder)
-    {
-        string seg = remainder.StartsWith('/') ? remainder.Substring(1) : remainder;
-        return seg switch
-        {
-            "links" => loc.Links,
-            "name" => loc.Name,
-            "uid" => loc.Uid,
-            "archetype_node_id" => loc.ArchetypeNodeId,
-            "archetype_details" => loc.ArchetypeDetails,
-            "feeder_audit" => loc.FeederAudit,
-            _ => null,
-        };
     }
 
     /// <summary>

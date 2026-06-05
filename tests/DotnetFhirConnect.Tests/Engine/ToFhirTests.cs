@@ -59,6 +59,13 @@ public sealed class ToFhirTests
         // Observation/<uuid>.
         Assert.NotEmpty(obs.PartOf);
         Assert.Equal("Observation/00000000-0000-0000-0000-000000000001", obs.PartOf[0].Reference);
+
+        // partOfReference (link, type=basedOn) rule: same rewrite into
+        // a second collection. Proves the multi-element /links path is
+        // actually walked (the canonical fixture carries 2 LINK
+        // entries: partOf + basedOn).
+        Assert.NotEmpty(obs.BasedOn);
+        Assert.Equal("Observation/00000000-0000-0000-0000-000000000002", obs.BasedOn[0].Reference);
     }
 
     [Fact]

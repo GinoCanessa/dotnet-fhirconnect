@@ -146,6 +146,15 @@
             "_type": "DV_EHR_URI",
             "value": "ehr:///compositions/00000000-0000-0000-0000-000000000001"
           }
+        },
+        {
+          "_type": "LINK",
+          "meaning": { "_type": "DV_TEXT", "value": "Based on referenced order" },
+          "type": { "_type": "DV_TEXT", "value": "basedOn" },
+          "target": {
+            "_type": "DV_EHR_URI",
+            "value": "ehr:///compositions/00000000-0000-0000-0000-000000000002"
+          }
         }
       ]
     }

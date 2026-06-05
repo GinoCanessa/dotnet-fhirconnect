@@ -71,6 +71,21 @@ public sealed class R4Adapter : IFhirAdapter
         object? value,
         [NotNullWhen(false)] out string? error)
     {
+        // ResourceReference is a valid target for the
+        // identifier sub-rule under a `reference` block.
+        if (resource is ResourceReference rr)
+        {
+            string rrp = StripResourcePrefix(path);
+            if (string.Equals(rrp, "identifier", StringComparison.Ordinal))
+            {
+                rr.Identifier = AsIdentifier(value);
+                error = null;
+                return true;
+            }
+            error = $"R4Adapter: unknown ResourceReference path '{path}'.";
+            return false;
+        }
+
         if (resource is not Observation obs)
         {
             error = $"R4Adapter: only Observation is supported in v0.x; got {resource?.GetType().Name ?? "null"}.";
@@ -358,6 +373,17 @@ public sealed class R4Adapter : IFhirAdapter
             string s => new ResourceReference { Display = s },
             _ => throw new InvalidCastException(
                 $"Cannot coerce {value.GetType().Name} to ResourceReference."),
+        };
+    }
+
+    private static Identifier AsIdentifier(object? value)
+    {
+        return value switch
+        {
+            null => new Identifier(),
+            Identifier id => id,
+            string s => new Identifier { Value = s },
+            _ => new Identifier { Value = value.ToString() },
         };
     }
 

@@ -2,23 +2,35 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Text.RegularExpressions;
 using DotnetFhirConnect.Fhir;
 using DotnetFhirConnect.Mappings;
 using DotnetOpenEhr.Rm.Common;
+using FhirIdentifier = Hl7.Fhir.Model.Identifier;
+using FhirResourceReference = Hl7.Fhir.Model.ResourceReference;
 
 namespace DotnetFhirConnect.Engine;
 
 /// <summary>
-/// Walks a model mapping's rule list against a
+/// Walks an <see cref="EffectiveMapping"/>'s rule list against a
 /// <see cref="BindingContext"/>, dispatching on rule kind and
 /// pushing values into the FHIR side via the supplied
-/// <see cref="IFhirAdapter"/>. v0.x covers the model-rule kinds
-/// listed in Phase 6a of the plan; extension-rule kinds
-/// (<c>reference</c>, <c>slotArchetype</c>,
-/// <c>extension: add/overwrite/remove</c>) are deferred to Phase 6b.
+/// <see cref="IFhirAdapter"/>. Phase 6b lands the
+/// <c>reference</c> / <c>slotArchetype</c> kinds; the extension
+/// verbs (add/overwrite/remove) are consumed by
+/// <see cref="EffectiveMapping.Build"/> at construction time and
+/// never reach this dispatcher.
 /// </summary>
 internal sealed class MappingRuleExecutor
 {
+    private static readonly Regex s_ofTypeStripper = new Regex(
+        @"\.ofType\([^)]+\)",
+        RegexOptions.Compiled);
+
+    private static readonly Regex s_unsupportedFhirPathFragment = new Regex(
+        @"\.(where|as|extension|select|exists|first|last|tail|skip|take|repeat)\(",
+        RegexOptions.Compiled);
+
     private readonly IFhirAdapter _adapter;
     private readonly TransformDirection _direction;
 
@@ -44,15 +56,10 @@ internal sealed class MappingRuleExecutor
         {
             return;
         }
-        if (rule.Extension is not null && rule.Reference is null && rule.SlotArchetype is null)
+
+        if (rule.Reference is not null)
         {
-            // Phase 6a: extension verbs on model rules are no-ops in v0.x.
-            // The extension-only rule kinds (reference / slotArchetype) are
-            // entirely deferred to Phase 6b.
-        }
-        if (rule.Reference is not null || rule.SlotArchetype is not null)
-        {
-            // Phase 6b territory; ignore.
+            ExecuteReference(ctx, rule);
             return;
         }
 
@@ -75,7 +82,20 @@ internal sealed class MappingRuleExecutor
             return;
         }
 
-        if (rule.With.OpenEhr is not null && rule.With.Fhir is not null)
+        // A slotArchetype-only rule is an informational binding for the
+        // merge layer's transitive bound-name set and has no executable
+        // effect (no manual / followedBy / link / reference). Skip
+        // direct dispatch on it.
+        if (rule.SlotArchetype is not null &&
+            rule.FollowedBy is null &&
+            rule.Manual is null &&
+            rule.Link is null)
+        {
+            return;
+        }
+
+        if (rule.With.OpenEhr is not null && rule.With.Fhir is not null &&
+            rule.With.Type != WithType.None)
         {
             if (_direction == TransformDirection.ToFhir)
             {
@@ -91,15 +111,19 @@ internal sealed class MappingRuleExecutor
     [RequiresUnreferencedCode("See FhirConnectEngine.")]
     private void ExecuteWrapperFollowedBy(BindingContext ctx, MappingRule rule, FollowedBy fb)
     {
-        // Wrapper rule (type:NONE). Resolve the openEHR sub-root
-        // (typically a collection like participations) and iterate.
+        // Compute the inner fhir root: combine the wrapper's with.fhir
+        // (or fall back to ctx.FhirRoot when unset) so nested rules
+        // address fields relative to the wrapper.
+        string innerFhirRoot = rule.With.Fhir is null
+            ? ctx.FhirRoot
+            : ResolveFhirPath(ctx, NormalizeFhirPath(rule.With.Fhir));
+
         if (rule.With.OpenEhr is null)
         {
-            // No openEHR root specified — just execute children once
-            // against the current context.
+            BindingContext flat = ctx.PushFollowedBy(openEhrRoot: null, fhirRoot: innerFhirRoot);
             foreach (MappingRule child in fb.Mappings)
             {
-                Execute(ctx, child);
+                Execute(flat, child);
             }
             return;
         }
@@ -110,7 +134,7 @@ internal sealed class MappingRuleExecutor
             {
                 continue;
             }
-            BindingContext nested = ctx.PushFollowedBy(item, rule.With.Fhir);
+            BindingContext nested = ctx.PushFollowedBy(item, innerFhirRoot);
             foreach (MappingRule child in fb.Mappings)
             {
                 Execute(nested, child);
@@ -127,7 +151,7 @@ internal sealed class MappingRuleExecutor
             return;
         }
         object? translated = OpenEhrToFhirTranslator.Translate(value);
-        string fhirPath = ResolveFhirPath(ctx, rule.With.Fhir!);
+        string fhirPath = ResolveFhirPath(ctx, NormalizeFhirPath(rule.With.Fhir!));
         if (!_adapter.TrySetValue(ctx.Resource, fhirPath, translated, out string? error))
         {
             throw new InvalidOperationException(
@@ -138,7 +162,7 @@ internal sealed class MappingRuleExecutor
     [RequiresUnreferencedCode("See FhirConnectEngine.")]
     private void ExecuteDirectToOpenEhr(BindingContext ctx, MappingRule rule)
     {
-        string fhirPath = ResolveFhirPath(ctx, rule.With.Fhir!);
+        string fhirPath = ResolveFhirPath(ctx, NormalizeFhirPath(rule.With.Fhir!));
         if (!_adapter.TryGetValue(ctx.Resource, fhirPath, out object? fhirValue) || fhirValue is null)
         {
             return;
@@ -151,12 +175,90 @@ internal sealed class MappingRuleExecutor
         (bool ok, string? err) = OpenEhrPathWriter.Write(ctx.Composition, rule.With.OpenEhr!, translated);
         if (!ok)
         {
-            // Direction-asymmetric paths (link-driven, performer collapse,
-            // etc.) are documented as ToFhir-only in v0.x; skip cleanly
-            // rather than throw so a single asymmetric rule does not
-            // poison the rest of the model walk.
             _ = err;
         }
+    }
+
+    [RequiresUnreferencedCode("See FhirConnectEngine.")]
+    private void ExecuteReference(BindingContext ctx, MappingRule rule)
+    {
+        if (_direction != TransformDirection.ToFhir)
+        {
+            return;
+        }
+
+        if (rule.With.Fhir is null)
+        {
+            return;
+        }
+
+        // The outer rule's with.openehr may be `$reference` (the rule
+        // is its own reference root — KDS_composition.fallIdentifikationReference).
+        // In that case we cannot resolve an openEHR value at the outer
+        // level; the nested mappings carry the data. Skip the resolve.
+        object? openEhrValue = null;
+        if (rule.With.OpenEhr is not null &&
+            !rule.With.OpenEhr.StartsWith("$reference", StringComparison.Ordinal))
+        {
+            openEhrValue = OpenEhrPathResolver.Resolve(ctx, rule.With.OpenEhr);
+        }
+
+        // Build the ResourceReference with Reference="<Type>/<id>".
+        string resourceType = rule.Reference?.ResourceType ?? "Resource";
+        string id = openEhrValue is null ? string.Empty : ExtractReferenceId(openEhrValue);
+        FhirResourceReference rr = new FhirResourceReference
+        {
+            Reference = string.IsNullOrEmpty(id) ? null : $"{resourceType}/{id}",
+        };
+
+        // Run any nested mappings against the freshly-built reference.
+        IReadOnlyList<MappingRule>? refMappings = rule.Reference?.Mappings;
+        if (refMappings is { Count: > 0 })
+        {
+            BindingContext nested = ctx.PushReference(rr, fhirRoot: "$resource", referenceRoot: openEhrValue);
+            foreach (MappingRule child in refMappings)
+            {
+                Execute(nested, child);
+            }
+        }
+
+        // If neither the outer resolve nor any nested rule populated
+        // anything meaningful, skip the write to avoid emitting an
+        // empty placeholder reference.
+        if (rr.Reference is null && rr.Identifier is null && rr.Display is null)
+        {
+            return;
+        }
+
+        string fhirPath = ResolveFhirPath(ctx, NormalizeFhirPath(rule.With.Fhir));
+        if (!_adapter.TrySetValue(ctx.Resource, fhirPath, rr, out string? error))
+        {
+            // Tolerate path-shape mismatches (e.g. `encounter.reference`
+            // string-shaped paths that the outer ResourceReference does
+            // not map cleanly to in v0.x — best-effort).
+            _ = error;
+        }
+    }
+
+    private static string ExtractReferenceId(object openEhrValue)
+    {
+        return openEhrValue switch
+        {
+            DotnetOpenEhr.Rm.DataTypes.Uri.DvEhrUri uri when !string.IsNullOrEmpty(uri.Value) =>
+                ExtractIdFromEhrUri(uri.Value),
+            DotnetOpenEhr.Rm.DataStructures.Cluster cluster => cluster.Uid?.Value ?? cluster.ArchetypeNodeId,
+            DotnetOpenEhr.Rm.DataStructures.Element element when element.Value is { } v => v.ToString() ?? string.Empty,
+            string s => s,
+            _ => openEhrValue.ToString() ?? string.Empty,
+        };
+    }
+
+    private static string ExtractIdFromEhrUri(string uri)
+    {
+        const string prefix = "ehr:///compositions/";
+        return uri.StartsWith(prefix, StringComparison.Ordinal)
+            ? uri.Substring(prefix.Length)
+            : uri;
     }
 
     [RequiresUnreferencedCode("See FhirConnectEngine.")]
@@ -167,10 +269,6 @@ internal sealed class MappingRuleExecutor
             return;
         }
 
-        // The openEHR-side path is `$archetype/links`. Iterate every
-        // match (use ResolveMany — Resolve throws on >1 hit) and
-        // filter on rule.link.type. Each kept Link's Target becomes
-        // a FHIR ResourceReference written to the rule's fhir path.
         foreach (object? candidate in OpenEhrPathResolver.ResolveMany(ctx, rule.With.OpenEhr ?? "$archetype/links"))
         {
             if (candidate is not Link link)
@@ -185,7 +283,7 @@ internal sealed class MappingRuleExecutor
             }
 
             object? translated = OpenEhrToFhirTranslator.Translate(link.Target);
-            string fhirPath = ResolveFhirPath(ctx, rule.With.Fhir!);
+            string fhirPath = ResolveFhirPath(ctx, NormalizeFhirPath(rule.With.Fhir!));
             if (!_adapter.TrySetValue(ctx.Resource, fhirPath, translated, out string? error))
             {
                 throw new InvalidOperationException(
@@ -199,6 +297,13 @@ internal sealed class MappingRuleExecutor
     {
         if (_direction == TransformDirection.ToFhir)
         {
+            // If the manual-bearing rule carries its own with.fhir
+            // (relative path), descend the root one more level so
+            // field.Path resolves under <wrapperRoot>.<rule.fhir>.
+            string root = rule.With.Fhir is null
+                ? ctx.FhirRoot
+                : ResolveFhirPath(ctx, NormalizeFhirPath(rule.With.Fhir));
+
             foreach (ManualEntry entry in entries)
             {
                 if (entry.Fhir is null)
@@ -207,14 +312,9 @@ internal sealed class MappingRuleExecutor
                 }
                 foreach (ManualField field in entry.Fhir)
                 {
-                    string fhirPath = CombineFhirPath(ctx.FhirRoot, field.Path);
+                    string fhirPath = CombineFhirPath(root, field.Path);
                     if (!_adapter.TrySetValue(ctx.Resource, fhirPath, field.Value, out string? error))
                     {
-                        // Manual paths target nested coding fields we
-                        // don't currently model in R4Adapter (e.g.
-                        // "coding.code"). Tolerate: this is Phase 6b
-                        // territory once the adapter grows nested
-                        // codeable-concept setters.
                         _ = error;
                     }
                 }
@@ -223,8 +323,7 @@ internal sealed class MappingRuleExecutor
         }
 
         // ToOpenEhr: write manual openEHR-side constants back into the
-        // typed Composition graph. The vital_status fixture exercises
-        // this via `participationFunction.manual.openehr.function = "performer"`.
+        // typed Composition graph.
         foreach (ManualEntry entry in entries)
         {
             if (entry.OpenEhr is null)
@@ -233,17 +332,11 @@ internal sealed class MappingRuleExecutor
             }
             foreach (ManualField field in entry.OpenEhr)
             {
-                // Manual openEHR constants are emitted as plain strings;
-                // pre-wrap them in DvText for the writer. Targets that
-                // expect a different RM type will be caught by the
-                // writer's per-path arm.
                 DotnetOpenEhr.Rm.DataTypes.Text.DvText boxed =
                     new DotnetOpenEhr.Rm.DataTypes.Text.DvText { Value = field.Value };
                 (bool ok, string? err) = OpenEhrPathWriter.Write(ctx.Composition, field.Path, boxed);
                 if (!ok)
                 {
-                    // Same tolerance as the ToFhir branch above —
-                    // manual writes are best-effort in v0.x.
                     _ = err;
                 }
             }
@@ -288,14 +381,36 @@ internal sealed class MappingRuleExecutor
         return fhirPath;
     }
 
+    /// <summary>
+    /// Strip the FHIRPath <c>.ofType(&lt;Type&gt;)</c> segment from
+    /// a path expression — the only FHIRPath construct v0.x
+    /// recognises in <c>with.fhir</c>. Any other construct
+    /// (<c>where(...)</c>, <c>as(...)</c>, etc.) throws so silent
+    /// mis-mapping is impossible.
+    /// </summary>
+    internal static string NormalizeFhirPath(string raw)
+    {
+        if (string.IsNullOrEmpty(raw))
+        {
+            return raw;
+        }
+        // Strip ofType first so the unsupported-fragment check is not
+        // confused by the legal construct.
+        string stripped = s_ofTypeStripper.Replace(raw, string.Empty);
+        if (s_unsupportedFhirPathFragment.IsMatch(stripped))
+        {
+            throw new NotSupportedException(
+                $"MappingRuleExecutor: FHIRPath construct in '{raw}' is not supported in v0.x; only '.ofType(<Type>)' is whitelisted.");
+        }
+        return stripped;
+    }
+
     private bool IsUnidirectionalAgainstUs(MappingRule rule)
     {
         if (rule.Unidirectional is null)
         {
             return false;
         }
-        // unidirectional value is the *allowed* direction; if it
-        // doesn't match ours, skip the rule.
         return _direction switch
         {
             TransformDirection.ToFhir => !string.Equals(rule.Unidirectional, "to_fhir", StringComparison.Ordinal),

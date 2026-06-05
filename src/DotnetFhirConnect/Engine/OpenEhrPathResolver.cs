@@ -130,6 +130,15 @@ internal static class OpenEhrPathResolver
         {
             return (ctx.OpenEhrRoot, RemainderAfter(p, "$openEHRRoot"));
         }
+        if (p.StartsWith("$reference", StringComparison.Ordinal))
+        {
+            if (ctx.ReferenceRoot is null)
+            {
+                throw new InvalidOperationException(
+                    "OpenEhrPathResolver: $reference prefix used outside a reference rule.");
+            }
+            return (ctx.ReferenceRoot, RemainderAfter(p, "$reference"));
+        }
         // Bare path (no $-prefix) — resolve against the current
         // openEHR root. Manual fields and the few rare prefix-less
         // openEHR paths land here.

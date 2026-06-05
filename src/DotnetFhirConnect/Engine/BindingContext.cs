@@ -22,12 +22,17 @@ namespace DotnetFhirConnect.Engine;
 /// <param name="FhirRoot">The current rule's FHIR sub-root path
 /// (e.g. <c>"$resource"</c>, <c>"$resource.note"</c>). Used to
 /// resolve nested <c>with.fhir</c> values inside <c>followedBy</c>.</param>
+/// <param name="ReferenceRoot">The openEHR-side value resolved by
+/// the enclosing <c>reference</c> rule, addressable as
+/// <c>$reference</c> inside the nested mapping list. Null outside a
+/// reference scope.</param>
 internal sealed record BindingContext(
     Composition Composition,
     Pathable Archetype,
     object OpenEhrRoot,
     object Resource,
-    string FhirRoot)
+    string FhirRoot,
+    object? ReferenceRoot = null)
 {
     /// <summary>
     /// Rebind <see cref="OpenEhrRoot"/> and <see cref="FhirRoot"/>
@@ -40,6 +45,23 @@ internal sealed record BindingContext(
         {
             OpenEhrRoot = openEhrRoot ?? OpenEhrRoot,
             FhirRoot = fhirRoot ?? FhirRoot,
+        };
+    }
+
+    /// <summary>
+    /// Push into a <c>reference</c> rule's nested mapping scope:
+    /// rebinds <see cref="Resource"/> to the freshly-built
+    /// <c>ResourceReference</c>, <see cref="FhirRoot"/> to its
+    /// path, and <see cref="ReferenceRoot"/> to the openEHR-side
+    /// value the <c>$reference</c> prefix should resolve against.
+    /// </summary>
+    public BindingContext PushReference(object resource, string fhirRoot, object? referenceRoot)
+    {
+        return this with
+        {
+            Resource = resource,
+            FhirRoot = fhirRoot,
+            ReferenceRoot = referenceRoot,
         };
     }
 }

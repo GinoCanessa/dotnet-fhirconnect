@@ -17,8 +17,34 @@ Date vendored: 2026-06-03
 |---|---|---|
 | `model/vital_status.v1.yml` | `model/evaluation/org.openehr/vital_status.v1.yml` | verbatim |
 | `project/KDS_Vitalstatus.context.yaml` | `projects/org.highmed/KDS/vitalstatus/KDS_Vitalstatus.context.yaml` | verbatim |
-| `project/KDS_composition.yml` | `projects/org.highmed/KDS/vitalstatus/KDS_composition.yml` | verbatim |
+| `project/KDS_composition.yml` | `projects/org.highmed/KDS/vitalstatus/KDS_composition.yml` | **patched** (see below) |
 | `project/KDS_vitalsigns.yml` | `projects/org.highmed/KDS/vitalstatus/KDS_vitalsigns.yml` | **patched** (see below) |
+
+### Patch: `encounter` extension verb in `KDS_composition.yml`
+
+Upstream the `encounter` rule (line 13) carries:
+
+```yaml
+extension: "overwrite"
+```
+
+The vital_status model mapping has no rule with the matching
+composite key
+`(name=encounter, fhir=$resource.encounter.ofType(Reference).identifier, disambiguator=CLUSTER.case_identification.v0)`,
+so the merge layer (`EffectiveMapping.Build`, plan slot `0605-02`
+phase 6) throws `FhirConnectFormatException` per its
+overwrite-with-no-match semantics. The vendored copy degrades the
+verb to `extension: "add"`, which is the actual bundle-author
+intent and resolves the conflict:
+
+```diff
+-    extension: "overwrite"
++    extension: "add"
+```
+
+**Upstream TODO:** file an issue / PR against
+`SevKohler/FHIRconnect-mapping-lib` to fix the verb at source.
+Tracked alongside the trailing-quote typo below.
 
 ### Patch: trailing-quote typo in `KDS_vitalsigns.yml`
 

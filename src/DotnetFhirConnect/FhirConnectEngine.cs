@@ -7,6 +7,8 @@ using DotnetFhirConnect.Fhir;
 using DotnetFhirConnect.Mappings;
 using DotnetOpenEhr.Rm.Common;
 using DotnetOpenEhr.Rm.Composition;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DotnetFhirConnect;
 
@@ -29,6 +31,8 @@ public sealed class FhirConnectEngine
     private readonly MappingBundle _bundle;
     private readonly ModelMapping _model;
     private readonly IFhirAdapter _adapter;
+    private readonly EffectiveMapping _effectiveMapping;
+    private readonly ILogger<FhirConnectEngine> _logger;
 
     /// <summary>
     /// Initialize the engine with a pre-loaded bundle. The bundle
@@ -37,9 +41,13 @@ public sealed class FhirConnectEngine
     /// <c>context.start</c> drives transform. Otherwise the first
     /// model in the bundle is used.
     /// </summary>
+    /// <param name="bundle">Pre-loaded FHIRconnect mapping bundle.</param>
+    /// <param name="logger">Optional logger for merge-layer
+    /// diagnostics; defaults to <see cref="NullLogger{T}.Instance"/>
+    /// when omitted.</param>
     /// <exception cref="ArgumentException">If the bundle has no
     /// usable model mapping.</exception>
-    public FhirConnectEngine(MappingBundle bundle)
+    public FhirConnectEngine(MappingBundle bundle, ILogger<FhirConnectEngine>? logger = null)
     {
         _bundle = bundle ?? throw new ArgumentNullException(nameof(bundle));
         if (bundle.Models.Count == 0)
@@ -48,8 +56,10 @@ public sealed class FhirConnectEngine
                 "FhirConnectEngine: bundle contains no model mapping. Load the model directory alongside the project bundle.",
                 nameof(bundle));
         }
+        _logger = logger ?? NullLogger<FhirConnectEngine>.Instance;
         _model = SelectStartModel(bundle);
         _adapter = FhirAdapterFactory.Create(_model.Spec.Version);
+        _effectiveMapping = EffectiveMapping.Build(_model, bundle.Extensions.Values, _logger);
     }
 
     /// <summary>The FHIR adapter chosen from <c>spec.version</c>.</summary>
@@ -57,6 +67,14 @@ public sealed class FhirConnectEngine
 
     /// <summary>The model mapping driving the transform.</summary>
     public ModelMapping Model => _model;
+
+    /// <summary>
+    /// The merged rule list the executor walks at run time —
+    /// <see cref="ModelMapping.Mappings"/> overlaid with every
+    /// applicable extension's rules via the
+    /// <see cref="EffectiveMapping.Build"/> merge layer.
+    /// </summary>
+    public EffectiveMapping EffectiveMapping => _effectiveMapping;
 
     /// <summary>
     /// Transform a typed openEHR <see cref="Composition"/> to the
@@ -90,7 +108,7 @@ public sealed class FhirConnectEngine
             FhirRoot: "$resource");
 
         MappingRuleExecutor executor = new MappingRuleExecutor(_adapter, TransformDirection.ToFhir);
-        executor.ExecuteAll(ctx, _model.Mappings);
+        executor.ExecuteAll(ctx, _effectiveMapping.Rules);
         return resource;
     }
 
@@ -143,7 +161,7 @@ public sealed class FhirConnectEngine
             FhirRoot: "$resource");
 
         MappingRuleExecutor executor = new MappingRuleExecutor(_adapter, TransformDirection.ToOpenEhr);
-        executor.ExecuteAll(ctx, _model.Mappings);
+        executor.ExecuteAll(ctx, _effectiveMapping.Rules);
         return skeleton;
     }
 

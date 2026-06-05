@@ -10,7 +10,7 @@ spec:
 
 mappings:
   - name: "encounter"
-    extension: "overwrite"
+    extension: "add"
     with:
       fhir: "$resource.encounter.ofType(Reference).identifier"
       openehr: "$composition/context/other_context[at0001]/items[openEHR-EHR-CLUSTER.case_identification.v0]"

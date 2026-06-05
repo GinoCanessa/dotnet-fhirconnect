@@ -14,7 +14,7 @@ namespace DotnetFhirConnect.Tests.Mappings;
 public sealed class ExtensionMappingLoaderTests
 {
     [Fact]
-    public void Load_KdsComposition_HasOverwriteAndAddRules()
+    public void Load_KdsComposition_HasAddRules()
     {
         ExtensionMapping ext = (ExtensionMapping)FhirConnectMapping.Load(FixtureLocator.KdsCompositionFile);
 
@@ -24,7 +24,7 @@ public sealed class ExtensionMappingLoaderTests
         Assert.Equal(2, ext.Mappings.Count);
 
         MappingRule encounter = ext.Mappings.Single(r => r.Name == "encounter");
-        Assert.Equal(ExtensionAction.Overwrite, encounter.Extension);
+        Assert.Equal(ExtensionAction.Add, encounter.Extension);
         Assert.Equal("CLUSTER.case_identification.v0", encounter.SlotArchetype);
 
         MappingRule fallId = ext.Mappings.Single(r => r.Name == "fallIdentifikationReference");

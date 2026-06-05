@@ -7,18 +7,38 @@
 [![Tests](https://github.com/ginoc/dotnet-fhirconnect/actions/workflows/ci.yml/badge.svg)](https://github.com/ginoc/dotnet-fhirconnect/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Status — pre-alpha (walking skeleton)
+## Status — pre-alpha (walking skeleton + bidirectional vital_status)
 
-`v0.x` ships **one direction only** — openEHR Composition → FHIR
-Resource — for the
+`v0.x` ships **bidirectional support** for the
 [`EVALUATION.vital_status.v1`](https://github.com/SevKohler/FHIRconnect-mapping-lib/blob/main/model/evaluation/org.openehr/vital_status.v1.yml)
-mapping against FHIR R4 `Observation`. Use it to exercise the engine
-and the CLI shape; do not use it in production.
+mapping across FHIR R4, R4B, and R5 — the engine walks an
+`EffectiveMapping` (model + extension merge layer) in both
+directions and the CLI's `transform --direction` accepts both
+`to-fhir` and `to-openehr`. Use it to exercise the engine and the
+CLI shape; do not use it in production. Broader mapping coverage
+and an OPT-driven `OpenEhrPathWriter` are follow-on work.
 
-The reverse direction (FHIR → openEHR), the R4B / R5 adapters, the
-extension-aware engine (Phase 6b), and broader mapping coverage are
-follow-on work. See [`scratch/0527-01/plan.md`](scratch/0527-01/plan.md)
-for the roadmap and open deviations.
+### Bidirectional support
+
+The vital_status mapping bundle has three field-equivalent
+bidirectional leaves — `effective`, `vitalStatus`, `note` — that
+round-trip Composition → Observation → Composition with pinned
+comparison semantics. The following fields are
+**direction-asymmetric in v0.x** and populated on `ToFhir` but
+not reverse-walked on `ToOpenEhr`:
+
+- `link`-driven references (`partOf`, `basedOn`, `focus`, `case`,
+  `hasMember`) — the `ehr:///compositions/<uuid>` ↔
+  `Reference("Observation/<uuid>")` rewrite is lossy on the
+  inverse without a marker.
+- `performer` — multiple openEHR sources (`health_care_facility`,
+  `composer`, `participations`, `other_participations`) collapse
+  into one FHIR array; the inverse cannot recover which slot
+  each entry came from.
+- The Phase 6b extension-injected `code` / `category` constants —
+  the extensions deterministically re-inject them on each
+  `ToFhir` hop, but no openEHR-side source exists to walk on
+  `ToOpenEhr`.
 
 ## Quickstart — library
 
@@ -84,9 +104,11 @@ internal seams.
   typed openEHR Reference Model, canonical / flat JSON, AQL path
   resolver. Floats to latest beta in the `2026.*-*` line via
   `Directory.Packages.props`.
-- **[Hl7.Fhir.R4](https://www.nuget.org/packages/Hl7.Fhir.R4)** —
-  Firely .NET SDK for FHIR R4 (R4B / R5 packages re-added when the
-  pending adapters land).
+- **[Hl7.Fhir.R4](https://www.nuget.org/packages/Hl7.Fhir.R4)**,
+  **[Hl7.Fhir.R4B](https://www.nuget.org/packages/Hl7.Fhir.R4B)**,
+  **[Hl7.Fhir.R5](https://www.nuget.org/packages/Hl7.Fhir.R5)** —
+  Firely .NET SDK; per-release Model assemblies disambiguated by an
+  `extern alias` MSBuild target.
 - **YamlDotNet**, **JsonSchema.Net**, **System.CommandLine**.
 
 ## License

@@ -96,15 +96,50 @@ public sealed class FhirConnectEngine
 
     /// <summary>
     /// Transform a FHIR resource back into a typed openEHR
-    /// <see cref="Composition"/>. <strong>Not supported in v0.x.</strong>
+    /// <see cref="Composition"/>. <strong>Phase 4 not landed in v0.x:</strong>
+    /// the public overload requires a Composition skeleton-bootstrap
+    /// step that lands in a later phase; use the internal overload
+    /// <see cref="ToOpenEhr(object, Composition)"/> until then.
     /// </summary>
     /// <exception cref="NotSupportedException">Always.</exception>
     public Composition ToOpenEhr(object resource)
     {
         throw new NotSupportedException(
-            "FhirConnectEngine.ToOpenEhr: FHIR → openEHR is not implemented in v0.x. " +
-            "v0.x ships the ToFhir direction; ToOpenEhr requires an inverse path-resolver " +
-            "for the typed RM, which is tracked as a follow-on slot to scratch/0527-01.");
+            "FhirConnectEngine.ToOpenEhr: Phase 4 not landed. The public overload " +
+            "requires a Composition skeleton-bootstrap step that lands in a later phase; " +
+            "use the internal ToOpenEhr(object, Composition) overload until then.");
+    }
+
+    /// <summary>
+    /// Bind a FHIR resource against a caller-supplied
+    /// <see cref="Composition"/> skeleton and execute the model
+    /// mapping in the ToOpenEhr direction. Internal-only until
+    /// Phase 4 lands the public skeleton bootstrap.
+    /// </summary>
+    [RequiresUnreferencedCode(
+        "Traverses Firely + DotnetOpenEhr.Aql typed graphs. Library is not AOT-publishable in v0.x.")]
+    internal Composition ToOpenEhr(object resource, Composition skeleton)
+    {
+        ArgumentNullException.ThrowIfNull(resource);
+        ArgumentNullException.ThrowIfNull(skeleton);
+
+        Locatable? archetypeEntry = FindStartArchetype(skeleton);
+        if (archetypeEntry is not Pathable archetypePathable)
+        {
+            throw new InvalidOperationException(
+                $"FhirConnectEngine.ToOpenEhr: start archetype '{_model.Spec.OpenEhrConfig?.Archetype}' not found in skeleton content.");
+        }
+
+        BindingContext ctx = new BindingContext(
+            Composition: skeleton,
+            Archetype: archetypePathable,
+            OpenEhrRoot: archetypePathable,
+            Resource: resource,
+            FhirRoot: "$resource");
+
+        MappingRuleExecutor executor = new MappingRuleExecutor(_adapter, TransformDirection.ToOpenEhr);
+        executor.ExecuteAll(ctx, _model.Mappings);
+        return skeleton;
     }
 
     private ModelMapping SelectStartModel(MappingBundle bundle)

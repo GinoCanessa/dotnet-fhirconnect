@@ -84,6 +84,6 @@ public sealed class ToFhirTests
         FhirConnectEngine engine = new FhirConnectEngine(bundle);
         System.NotSupportedException ex = Assert.Throws<System.NotSupportedException>(
             () => engine.ToOpenEhr(new FhirObservation()));
-        Assert.Contains("v0.x", ex.Message);
+        Assert.Contains("Phase 4 not landed", ex.Message);
     }
 }

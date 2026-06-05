@@ -75,11 +75,16 @@ internal sealed class MappingRuleExecutor
             return;
         }
 
-        if (_direction == TransformDirection.ToFhir &&
-            rule.With.OpenEhr is not null &&
-            rule.With.Fhir is not null)
+        if (rule.With.OpenEhr is not null && rule.With.Fhir is not null)
         {
-            ExecuteDirectToFhir(ctx, rule);
+            if (_direction == TransformDirection.ToFhir)
+            {
+                ExecuteDirectToFhir(ctx, rule);
+            }
+            else
+            {
+                ExecuteDirectToOpenEhr(ctx, rule);
+            }
         }
     }
 
@@ -131,6 +136,30 @@ internal sealed class MappingRuleExecutor
     }
 
     [RequiresUnreferencedCode("See FhirConnectEngine.")]
+    private void ExecuteDirectToOpenEhr(BindingContext ctx, MappingRule rule)
+    {
+        string fhirPath = ResolveFhirPath(ctx, rule.With.Fhir!);
+        if (!_adapter.TryGetValue(ctx.Resource, fhirPath, out object? fhirValue) || fhirValue is null)
+        {
+            return;
+        }
+        object? translated = FhirToOpenEhrTranslator.Translate(fhirValue);
+        if (translated is null)
+        {
+            return;
+        }
+        (bool ok, string? err) = OpenEhrPathWriter.Write(ctx.Composition, rule.With.OpenEhr!, translated);
+        if (!ok)
+        {
+            // Direction-asymmetric paths (link-driven, performer collapse,
+            // etc.) are documented as ToFhir-only in v0.x; skip cleanly
+            // rather than throw so a single asymmetric rule does not
+            // poison the rest of the model walk.
+            _ = err;
+        }
+    }
+
+    [RequiresUnreferencedCode("See FhirConnectEngine.")]
     private void ExecuteLink(BindingContext ctx, MappingRule rule)
     {
         if (_direction != TransformDirection.ToFhir)
@@ -168,26 +197,54 @@ internal sealed class MappingRuleExecutor
     [RequiresUnreferencedCode("See FhirConnectEngine.")]
     private void ExecuteManual(BindingContext ctx, MappingRule rule, IReadOnlyList<ManualEntry> entries)
     {
-        if (_direction != TransformDirection.ToFhir)
+        if (_direction == TransformDirection.ToFhir)
         {
+            foreach (ManualEntry entry in entries)
+            {
+                if (entry.Fhir is null)
+                {
+                    continue;
+                }
+                foreach (ManualField field in entry.Fhir)
+                {
+                    string fhirPath = CombineFhirPath(ctx.FhirRoot, field.Path);
+                    if (!_adapter.TrySetValue(ctx.Resource, fhirPath, field.Value, out string? error))
+                    {
+                        // Manual paths target nested coding fields we
+                        // don't currently model in R4Adapter (e.g.
+                        // "coding.code"). Tolerate: this is Phase 6b
+                        // territory once the adapter grows nested
+                        // codeable-concept setters.
+                        _ = error;
+                    }
+                }
+            }
             return;
         }
+
+        // ToOpenEhr: write manual openEHR-side constants back into the
+        // typed Composition graph. The vital_status fixture exercises
+        // this via `participationFunction.manual.openehr.function = "performer"`.
         foreach (ManualEntry entry in entries)
         {
-            if (entry.Fhir is null)
+            if (entry.OpenEhr is null)
             {
                 continue;
             }
-            foreach (ManualField field in entry.Fhir)
+            foreach (ManualField field in entry.OpenEhr)
             {
-                string fhirPath = CombineFhirPath(ctx.FhirRoot, field.Path);
-                if (!_adapter.TrySetValue(ctx.Resource, fhirPath, field.Value, out string? error))
+                // Manual openEHR constants are emitted as plain strings;
+                // pre-wrap them in DvText for the writer. Targets that
+                // expect a different RM type will be caught by the
+                // writer's per-path arm.
+                DotnetOpenEhr.Rm.DataTypes.Text.DvText boxed =
+                    new DotnetOpenEhr.Rm.DataTypes.Text.DvText { Value = field.Value };
+                (bool ok, string? err) = OpenEhrPathWriter.Write(ctx.Composition, field.Path, boxed);
+                if (!ok)
                 {
-                    // Manual paths target nested coding fields we
-                    // don't currently model in R4Adapter (e.g.
-                    // "coding.code"). Tolerate: this is Phase 6b
-                    // territory once the adapter grows nested
-                    // codeable-concept setters.
+                    // Same tolerance as the ToFhir branch above —
+                    // manual writes are best-effort in v0.x.
+                    _ = err;
                 }
             }
         }

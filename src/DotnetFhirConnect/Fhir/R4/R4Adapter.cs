@@ -135,7 +135,51 @@ public sealed class R4Adapter : IFhirAdapter
                     error = null;
                     return true;
 
+                case "code.coding[0].code":
+                    obs.Code ??= new CodeableConcept();
+                    if (obs.Code.Coding.Count == 0) { obs.Code.Coding.Add(new Coding()); }
+                    obs.Code.Coding[0].Code = AsString(value);
+                    error = null;
+                    return true;
+
+                case "code.coding[0].system":
+                    obs.Code ??= new CodeableConcept();
+                    if (obs.Code.Coding.Count == 0) { obs.Code.Coding.Add(new Coding()); }
+                    obs.Code.Coding[0].System = AsString(value);
+                    error = null;
+                    return true;
+
+                case "code.coding[0].display":
+                    obs.Code ??= new CodeableConcept();
+                    if (obs.Code.Coding.Count == 0) { obs.Code.Coding.Add(new Coding()); }
+                    obs.Code.Coding[0].Display = AsString(value);
+                    error = null;
+                    return true;
+
+                case "category[0].coding[0].code":
+                    EnsureCategoryCoding(obs).Code = AsString(value);
+                    error = null;
+                    return true;
+
+                case "category[0].coding[0].system":
+                    EnsureCategoryCoding(obs).System = AsString(value);
+                    error = null;
+                    return true;
+
+                case "category[0].coding[0].display":
+                    EnsureCategoryCoding(obs).Display = AsString(value);
+                    error = null;
+                    return true;
+
                 default:
+                    // Fallback: any `<x>.coding[<n>].<field>` shape walks
+                    // the named CodeableConcept and assigns the named field
+                    // on Coding[<n>] in place.
+                    if (TrySetNestedCodingField(obs, p, value))
+                    {
+                        error = null;
+                        return true;
+                    }
                     error = $"R4Adapter: unknown Observation path '{path}' (normalized '{p}').";
                     return false;
             }
@@ -315,5 +359,79 @@ public sealed class R4Adapter : IFhirAdapter
             _ => throw new InvalidCastException(
                 $"Cannot coerce {value.GetType().Name} to ResourceReference."),
         };
+    }
+
+    private static string? AsString(object? value)
+    {
+        return value switch
+        {
+            null => null,
+            string s => s,
+            _ => value.ToString(),
+        };
+    }
+
+    private static Coding EnsureCategoryCoding(Observation obs)
+    {
+        if (obs.Category.Count == 0)
+        {
+            obs.Category.Add(new CodeableConcept());
+        }
+        CodeableConcept cc = obs.Category[0];
+        if (cc.Coding.Count == 0)
+        {
+            cc.Coding.Add(new Coding());
+        }
+        return cc.Coding[0];
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex s_nestedCodingPath =
+        new System.Text.RegularExpressions.Regex(
+            @"^(?<parent>code|category)(?:\[(?<pidx>\d+)\])?\.coding\[(?<idx>\d+)\]\.(?<field>code|system|display)$",
+            System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static bool TrySetNestedCodingField(Observation obs, string normalizedPath, object? value)
+    {
+        System.Text.RegularExpressions.Match m = s_nestedCodingPath.Match(normalizedPath);
+        if (!m.Success)
+        {
+            return false;
+        }
+        int codingIdx = int.Parse(m.Groups["idx"].Value, System.Globalization.CultureInfo.InvariantCulture);
+        int parentIdx = m.Groups["pidx"].Success
+            ? int.Parse(m.Groups["pidx"].Value, System.Globalization.CultureInfo.InvariantCulture)
+            : 0;
+        CodeableConcept? cc;
+        if (string.Equals(m.Groups["parent"].Value, "code", System.StringComparison.Ordinal))
+        {
+            obs.Code ??= new CodeableConcept();
+            cc = obs.Code;
+        }
+        else
+        {
+            while (obs.Category.Count <= parentIdx)
+            {
+                obs.Category.Add(new CodeableConcept());
+            }
+            cc = obs.Category[parentIdx];
+        }
+        while (cc.Coding.Count <= codingIdx)
+        {
+            cc.Coding.Add(new Coding());
+        }
+        string? strValue = AsString(value);
+        switch (m.Groups["field"].Value)
+        {
+            case "code":
+                cc.Coding[codingIdx].Code = strValue;
+                return true;
+            case "system":
+                cc.Coding[codingIdx].System = strValue;
+                return true;
+            case "display":
+                cc.Coding[codingIdx].Display = strValue;
+                return true;
+        }
+        return false;
     }
 }

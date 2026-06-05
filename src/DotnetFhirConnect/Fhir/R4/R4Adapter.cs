@@ -204,6 +204,42 @@ public sealed class R4Adapter : IFhirAdapter
                 value = obs.Encounter;
                 return obs.Encounter is not null;
 
+            case "code.coding[0].code":
+                if (obs.Code is { Coding.Count: > 0 } cc1)
+                {
+                    value = cc1.Coding[0].Code;
+                    return value is not null;
+                }
+                value = null;
+                return false;
+
+            case "code.coding[0].system":
+                if (obs.Code is { Coding.Count: > 0 } cc2)
+                {
+                    value = cc2.Coding[0].System;
+                    return value is not null;
+                }
+                value = null;
+                return false;
+
+            case "category[0].coding[0].code":
+                if (obs.Category.Count > 0 && obs.Category[0] is { Coding.Count: > 0 } cat1)
+                {
+                    value = cat1.Coding[0].Code;
+                    return value is not null;
+                }
+                value = null;
+                return false;
+
+            case "category[0].coding[0].system":
+                if (obs.Category.Count > 0 && obs.Category[0] is { Coding.Count: > 0 } cat2)
+                {
+                    value = cat2.Coding[0].System;
+                    return value is not null;
+                }
+                value = null;
+                return false;
+
             default:
                 value = null;
                 return false;

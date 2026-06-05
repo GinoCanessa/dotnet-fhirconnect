@@ -30,6 +30,10 @@
     <PackageReference Include="JsonSchema.Net" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="DotnetFhirConnect.Tests" />
+  </ItemGroup>
+
   <!--
     Embed the patched FHIRconnect v1.0.0 JSON schemas as resources so
     the validator does not depend on the test fixtures folder at

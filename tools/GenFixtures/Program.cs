@@ -1,3 +1,4 @@
+extern alias coreR4;
 using System;
 using System.IO;
 using System.Text;
@@ -5,6 +6,8 @@ using DotnetFhirConnect.Fhir.R4;
 using DotnetFhirConnect.Mappings;
 using DotnetOpenEhr.Serialization.Json;
 using OpenEhrComposition = DotnetOpenEhr.Rm.Composition.Composition;
+using FhirObservation = coreR4::Hl7.Fhir.Model.Observation;
+using ObservationStatus = coreR4::Hl7.Fhir.Model.ObservationStatus;
 
 namespace DotnetFhirConnect.Tools.GenFixtures;
 
@@ -51,9 +54,9 @@ internal static class Program
         // v0.x scope: no mapping rule emits Observation.status (min
         // cardinality 1 per FHIR R4). Patch in a sensible default so
         // the produced JSON round-trips through Firely's parser.
-        if (resource is Hl7.Fhir.Model.Observation obs && obs.Status is null)
+        if (resource is FhirObservation obs && obs.Status is null)
         {
-            obs.Status = Hl7.Fhir.Model.ObservationStatus.Final;
+            obs.Status = ObservationStatus.Final;
         }
         string observationJson = engine.Core.Adapter.SerializeResource(resource);
 

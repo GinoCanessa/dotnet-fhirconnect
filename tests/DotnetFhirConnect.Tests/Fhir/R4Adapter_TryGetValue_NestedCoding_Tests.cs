@@ -1,3 +1,6 @@
+extern alias coreR4;
+using Observation = coreR4::Hl7.Fhir.Model.Observation;
+using Annotation = coreR4::Hl7.Fhir.Model.Annotation;
 using DotnetFhirConnect.Fhir.R4;
 using Hl7.Fhir.Model;
 using Xunit;

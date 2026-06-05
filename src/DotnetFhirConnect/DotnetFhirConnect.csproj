@@ -15,21 +15,49 @@
   <ItemGroup>
     <PackageReference Include="DotnetOpenEhr" />
     <PackageReference Include="Hl7.Fhir.R4" />
-    <!--
-      Hl7.Fhir.R4B and Hl7.Fhir.R5 are intentionally not referenced in
-      v0.x: the R4B / R5 adapters (Fhir/R4B/R4BAdapter.cs,
-      Fhir/R5/R5Adapter.cs) are pending stubs that do not touch the
-      Firely model types yet. Their dependencies redefine
-      Hl7.Fhir.Serialization.FhirJsonParser, FhirJsonSerializer in the
-      same namespace as R4, causing CS0433 ambiguity. The standard
-      `extern alias` escape hatch does not propagate to transitive
-      shared assemblies in NuGet, so we drop the packages for now and
-      add them back in the slot that lands the real R4B / R5 adapters.
-    -->
+    <PackageReference Include="Hl7.Fhir.R4B" />
+    <PackageReference Include="Hl7.Fhir.R5" />
     <PackageReference Include="YamlDotNet" />
     <PackageReference Include="JsonSchema.Net" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
+
+  <!--
+    Per-release Firely Model assemblies (Hl7.Fhir.R4 / R4B / R5)
+    redefine the same Hl7.Fhir.Model.* types in three places, so we
+    need extern aliases to disambiguate. The shared layers
+    (Hl7.Fhir.Base, Hl7.Fhir.Conformance) stay un-aliased.
+
+    The conventional `Aliases` metadata on `PackageReference` does
+    not propagate to transitive package assemblies — verified
+    pre-flight in 0603-10. Instead, hook the post-resolution
+    `ResolveAssemblyReferences` step and stamp Aliases on the
+    matching `ReferencePath` items.
+  -->
+  <Target Name="AddPackageAliases"
+          AfterTargets="ResolveAssemblyReferences"
+          BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <ReferencePath Condition="'%(FileName)'=='Hl7.Fhir.R4'">
+        <Aliases>coreR4</Aliases>
+      </ReferencePath>
+      <ReferencePath Condition="'%(FileName)'=='Hl7.Fhir.R4B'">
+        <Aliases>coreR4B</Aliases>
+      </ReferencePath>
+      <ReferencePath Condition="'%(FileName)'=='Hl7.Fhir.R5'">
+        <Aliases>coreR5</Aliases>
+      </ReferencePath>
+      <ReferencePathWithRefAssemblies Condition="'%(FileName)'=='Hl7.Fhir.R4'">
+        <Aliases>coreR4</Aliases>
+      </ReferencePathWithRefAssemblies>
+      <ReferencePathWithRefAssemblies Condition="'%(FileName)'=='Hl7.Fhir.R4B'">
+        <Aliases>coreR4B</Aliases>
+      </ReferencePathWithRefAssemblies>
+      <ReferencePathWithRefAssemblies Condition="'%(FileName)'=='Hl7.Fhir.R5'">
+        <Aliases>coreR5</Aliases>
+      </ReferencePathWithRefAssemblies>
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <InternalsVisibleTo Include="DotnetFhirConnect.Tests" />

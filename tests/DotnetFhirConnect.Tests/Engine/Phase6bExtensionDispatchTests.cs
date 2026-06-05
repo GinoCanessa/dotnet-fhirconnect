@@ -1,3 +1,6 @@
+extern alias coreR4;
+using Observation = coreR4::Hl7.Fhir.Model.Observation;
+using Annotation = coreR4::Hl7.Fhir.Model.Annotation;
 using System;
 using DotnetFhirConnect;
 using DotnetFhirConnect.Engine;
@@ -88,7 +91,7 @@ public sealed class Phase6bExtensionDispatchTests
         OpenEhrComposition composition = EngineFixtures.LoadComposition();
         R4Engine engine = new R4Engine(bundle);
         Resource produced = engine.ToFhir(composition);
-        Hl7.Fhir.Model.Observation obs = Assert.IsType<Hl7.Fhir.Model.Observation>(produced);
+        Observation obs = Assert.IsType<Observation>(produced);
         Assert.NotNull(obs);
     }
 
@@ -123,7 +126,7 @@ public sealed class Phase6bExtensionDispatchTests
         // does not throw on the marker rule. Use a vital_status
         // composition + the engine's R4 adapter directly.
         FhirConnectEngine engine = new FhirConnectEngine(bundle);
-        Hl7.Fhir.Model.Observation obs = new Hl7.Fhir.Model.Observation();
+        Observation obs = new Observation();
         // Manually drive the executor in a way that hits the marker
         // rule via the model's Mappings list, bypassing SkeletonBuilder.
         OpenEhrComposition skeleton = EngineFixtures.LoadComposition();

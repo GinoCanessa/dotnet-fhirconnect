@@ -1,9 +1,12 @@
+extern alias coreR4;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text.Json;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
+using Annotation = coreR4::Hl7.Fhir.Model.Annotation;
+using Observation = coreR4::Hl7.Fhir.Model.Observation;
 
 namespace DotnetFhirConnect.Fhir.R4;
 
@@ -18,7 +21,7 @@ namespace DotnetFhirConnect.Fhir.R4;
 public sealed class R4Adapter : IFhirAdapter
 {
     private static readonly Hl7.Fhir.Introspection.ModelInspector s_inspector =
-        Hl7.Fhir.Model.ModelInfo.ModelInspector;
+        coreR4::Hl7.Fhir.Model.ModelInfo.ModelInspector;
     private static readonly BaseFhirJsonDeserializer s_deserializer =
         new BaseFhirJsonDeserializer(s_inspector);
     private static readonly BaseFhirJsonSerializer s_serializer =

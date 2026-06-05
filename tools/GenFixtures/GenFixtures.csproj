@@ -12,4 +12,30 @@
     <ProjectReference Include="..\..\src\DotnetFhirConnect\DotnetFhirConnect.csproj" />
   </ItemGroup>
 
+  <!-- Mirror the alias scheme so Observation resolves to R4. -->
+  <Target Name="AddPackageAliases"
+          AfterTargets="ResolveAssemblyReferences"
+          BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <ReferencePath Condition="'%(FileName)'=='Hl7.Fhir.R4'">
+        <Aliases>coreR4</Aliases>
+      </ReferencePath>
+      <ReferencePath Condition="'%(FileName)'=='Hl7.Fhir.R4B'">
+        <Aliases>coreR4B</Aliases>
+      </ReferencePath>
+      <ReferencePath Condition="'%(FileName)'=='Hl7.Fhir.R5'">
+        <Aliases>coreR5</Aliases>
+      </ReferencePath>
+      <ReferencePathWithRefAssemblies Condition="'%(FileName)'=='Hl7.Fhir.R4'">
+        <Aliases>coreR4</Aliases>
+      </ReferencePathWithRefAssemblies>
+      <ReferencePathWithRefAssemblies Condition="'%(FileName)'=='Hl7.Fhir.R4B'">
+        <Aliases>coreR4B</Aliases>
+      </ReferencePathWithRefAssemblies>
+      <ReferencePathWithRefAssemblies Condition="'%(FileName)'=='Hl7.Fhir.R5'">
+        <Aliases>coreR5</Aliases>
+      </ReferencePathWithRefAssemblies>
+    </ItemGroup>
+  </Target>
+
 </Project>

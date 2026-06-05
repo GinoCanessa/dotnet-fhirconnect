@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
-using Hl7.Fhir.Model;
 using DotnetFhirConnect.Mappings;
+using Hl7.Fhir.Model;
 using OpenEhrComposition = DotnetOpenEhr.Rm.Composition.Composition;
 
 namespace DotnetFhirConnect.Fhir.R4;

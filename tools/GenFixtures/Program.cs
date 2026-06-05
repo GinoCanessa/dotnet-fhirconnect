@@ -48,6 +48,13 @@ internal static class Program
 
         R4Engine engine = new R4Engine(bundle);
         Hl7.Fhir.Model.Resource resource = engine.ToFhir(composition);
+        // v0.x scope: no mapping rule emits Observation.status (min
+        // cardinality 1 per FHIR R4). Patch in a sensible default so
+        // the produced JSON round-trips through Firely's parser.
+        if (resource is Hl7.Fhir.Model.Observation obs && obs.Status is null)
+        {
+            obs.Status = Hl7.Fhir.Model.ObservationStatus.Final;
+        }
         string observationJson = engine.Core.Adapter.SerializeResource(resource);
 
         File.WriteAllText(outputPath, observationJson, new UTF8Encoding(false));

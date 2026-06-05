@@ -52,6 +52,47 @@
       "_type": "PARTY_IDENTIFIED",
       "name": "Test Hospital"
     },
+    "other_context": {
+      "_type": "ITEM_TREE",
+      "name": { "_type": "DV_TEXT", "value": "Tree" },
+      "archetype_node_id": "at0001",
+      "items": [
+        {
+          "_type": "CLUSTER",
+          "name": { "_type": "DV_TEXT", "value": "Fall-Kennung" },
+          "archetype_node_id": "openEHR-EHR-CLUSTER.case_identification.v0",
+          "archetype_details": {
+            "archetype_id": { "value": "openEHR-EHR-CLUSTER.case_identification.v0" },
+            "rm_version": "1.0.4"
+          },
+          "items": [
+            {
+              "_type": "ELEMENT",
+              "name": { "_type": "DV_TEXT", "value": "Fall-Kennung-ID" },
+              "archetype_node_id": "at0001",
+              "value": {
+                "_type": "DV_IDENTIFIER",
+                "id": "CASE-12345",
+                "issuer": "TestHospital",
+                "assigner": "TestHospital",
+                "type": "case"
+              }
+            }
+          ],
+          "links": [
+            {
+              "_type": "LINK",
+              "meaning": { "_type": "DV_TEXT", "value": "the case this composition relates to" },
+              "type": { "_type": "DV_TEXT", "value": "case" },
+              "target": {
+                "_type": "DV_EHR_URI",
+                "value": "ehr:///compositions/CASE-12345"
+              }
+            }
+          ]
+        }
+      ]
+    },
     "participations": [
       {
         "_type": "PARTICIPATION",

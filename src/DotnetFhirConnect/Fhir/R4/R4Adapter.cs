@@ -150,6 +150,18 @@ public sealed class R4Adapter : IFhirAdapter
                     error = null;
                     return true;
 
+                case "encounter.identifier":
+                    obs.Encounter ??= new ResourceReference();
+                    obs.Encounter.Identifier = AsIdentifier(value);
+                    error = null;
+                    return true;
+
+                case "encounter.reference":
+                    obs.Encounter ??= new ResourceReference();
+                    obs.Encounter.Reference = AsString(value);
+                    error = null;
+                    return true;
+
                 case "code.coding[0].code":
                     obs.Code ??= new CodeableConcept();
                     if (obs.Code.Coding.Count == 0) { obs.Code.Coding.Add(new Coding()); }
@@ -413,7 +425,7 @@ public sealed class R4Adapter : IFhirAdapter
 
     private static readonly System.Text.RegularExpressions.Regex s_nestedCodingPath =
         new System.Text.RegularExpressions.Regex(
-            @"^(?<parent>code|category)(?:\[(?<pidx>\d+)\])?\.coding\[(?<idx>\d+)\]\.(?<field>code|system|display)$",
+            @"^(?<parent>code|category)(?:\[(?<pidx>\d+)\])?\.coding(?:\[(?<idx>\d+)\])?\.(?<field>code|system|display)$",
             System.Text.RegularExpressions.RegexOptions.Compiled);
 
     private static bool TrySetNestedCodingField(Observation obs, string normalizedPath, object? value)
@@ -423,7 +435,9 @@ public sealed class R4Adapter : IFhirAdapter
         {
             return false;
         }
-        int codingIdx = int.Parse(m.Groups["idx"].Value, System.Globalization.CultureInfo.InvariantCulture);
+        int codingIdx = m.Groups["idx"].Success
+            ? int.Parse(m.Groups["idx"].Value, System.Globalization.CultureInfo.InvariantCulture)
+            : 0;
         int parentIdx = m.Groups["pidx"].Success
             ? int.Parse(m.Groups["pidx"].Value, System.Globalization.CultureInfo.InvariantCulture)
             : 0;

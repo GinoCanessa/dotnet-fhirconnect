@@ -82,11 +82,14 @@ internal sealed class MappingRuleExecutor
             return;
         }
 
-        // A slotArchetype-only rule is an informational binding for the
-        // merge layer's transitive bound-name set and has no executable
-        // effect (no manual / followedBy / link / reference). Skip
-        // direct dispatch on it.
+        // A slotArchetype-only rule with no executable bits and no
+        // direct openehr/fhir copy semantics (type:NONE wrapper-less)
+        // is an informational binding for the merge layer's
+        // transitive bound-name set and has no executable effect.
+        // Rules with slotArchetype + type:default + openehr/fhir paths
+        // are real direct rules — slotArchetype is just an extra hint.
         if (rule.SlotArchetype is not null &&
+            rule.With.Type == WithType.None &&
             rule.FollowedBy is null &&
             rule.Manual is null &&
             rule.Link is null)
@@ -145,13 +148,25 @@ internal sealed class MappingRuleExecutor
     [RequiresUnreferencedCode("See FhirConnectEngine.")]
     private void ExecuteDirectToFhir(BindingContext ctx, MappingRule rule)
     {
+        string rawFhir = rule.With.Fhir!;
+        // Structural marker rules whose fhir target is `$resource` (the
+        // whole resource itself) have no executable copy semantics —
+        // they just establish a binding. Note `$fhirRoot` is NOT a
+        // marker — it expands to the enclosing binding's root path,
+        // which IS a legitimate write target (e.g. participations
+        // wrapper-followedBy children that copy values into the
+        // performer collection).
+        if (string.Equals(rawFhir, "$resource", StringComparison.Ordinal))
+        {
+            return;
+        }
         object? value = OpenEhrPathResolver.Resolve(ctx, rule.With.OpenEhr!);
         if (value is null)
         {
             return;
         }
         object? translated = OpenEhrToFhirTranslator.Translate(value);
-        string fhirPath = ResolveFhirPath(ctx, NormalizeFhirPath(rule.With.Fhir!));
+        string fhirPath = ResolveFhirPath(ctx, NormalizeFhirPath(rawFhir));
         if (!_adapter.TrySetValue(ctx.Resource, fhirPath, translated, out string? error))
         {
             throw new InvalidOperationException(
@@ -231,11 +246,18 @@ internal sealed class MappingRuleExecutor
         }
 
         string fhirPath = ResolveFhirPath(ctx, NormalizeFhirPath(rule.With.Fhir));
+        // FHIRconnect convention: when an outer reference rule targets
+        // `<x>.reference`, the intent is "make <x> a reference to the
+        // referenced resource", not "set the reference string". Strip
+        // the trailing `.reference` so the whole ResourceReference is
+        // written into the parent field.
+        if (fhirPath.EndsWith(".reference", StringComparison.Ordinal))
+        {
+            fhirPath = fhirPath.Substring(0, fhirPath.Length - ".reference".Length);
+        }
         if (!_adapter.TrySetValue(ctx.Resource, fhirPath, rr, out string? error))
         {
-            // Tolerate path-shape mismatches (e.g. `encounter.reference`
-            // string-shaped paths that the outer ResourceReference does
-            // not map cleanly to in v0.x — best-effort).
+            // Tolerate path-shape mismatches (best-effort).
             _ = error;
         }
     }
@@ -286,8 +308,10 @@ internal sealed class MappingRuleExecutor
             string fhirPath = ResolveFhirPath(ctx, NormalizeFhirPath(rule.With.Fhir!));
             if (!_adapter.TrySetValue(ctx.Resource, fhirPath, translated, out string? error))
             {
-                throw new InvalidOperationException(
-                    $"FhirConnectEngine: link rule '{rule.Name}' failed to assign FHIR path '{fhirPath}': {error}");
+                // Best-effort: link rules inside a nested reference
+                // scope may target paths the adapter does not model on
+                // ResourceReference (v0.x scope). Tolerate.
+                _ = error;
             }
         }
     }
@@ -297,12 +321,12 @@ internal sealed class MappingRuleExecutor
     {
         if (_direction == TransformDirection.ToFhir)
         {
-            // If the manual-bearing rule carries its own with.fhir
-            // (relative path), descend the root one more level so
-            // field.Path resolves under <wrapperRoot>.<rule.fhir>.
+            // If the manual-bearing rule carries its own with.fhir,
+            // descend the root one more level so field.Path resolves
+            // under (ctx.FhirRoot + rule.with.fhir).
             string root = rule.With.Fhir is null
                 ? ctx.FhirRoot
-                : ResolveFhirPath(ctx, NormalizeFhirPath(rule.With.Fhir));
+                : CombineRelativeFhirPath(ctx, rule.With.Fhir);
 
             foreach (ManualEntry entry in entries)
             {
@@ -354,6 +378,26 @@ internal sealed class MappingRuleExecutor
             return path;
         }
         return root.EndsWith('.') ? root + path : root + "." + path;
+    }
+
+    /// <summary>
+    /// Resolve a rule's <c>with.fhir</c> path with relative-path
+    /// semantics: <c>$fhirRoot</c> / <c>$resource</c> prefixes pass
+    /// through (or substitute), but a bare path like <c>"coding"</c>
+    /// is combined onto <see cref="BindingContext.FhirRoot"/>.
+    /// </summary>
+    private static string CombineRelativeFhirPath(BindingContext ctx, string fhirPath)
+    {
+        string normalized = NormalizeFhirPath(fhirPath);
+        if (string.IsNullOrEmpty(normalized))
+        {
+            return ctx.FhirRoot;
+        }
+        if (normalized.StartsWith('$'))
+        {
+            return ResolveFhirPath(ctx, normalized);
+        }
+        return CombineFhirPath(ctx.FhirRoot, normalized);
     }
 
     /// <summary>

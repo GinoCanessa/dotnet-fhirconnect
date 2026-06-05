@@ -1,5 +1,8 @@
 using System;
+using System.Linq;
 using DotnetOpenEhr.Rm.Common;
+using DotnetOpenEhr.Rm.DataStructures;
+using DotnetOpenEhr.Rm.DataTypes.Basic;
 using DotnetOpenEhr.Rm.DataTypes.DateTime;
 using DotnetOpenEhr.Rm.DataTypes.Text;
 using DotnetOpenEhr.Rm.DataTypes.Uri;
@@ -72,9 +75,42 @@ internal static class OpenEhrToFhirTranslator
                     ? new ResourceReference { Display = perfP.Name }
                     : null;
 
+            case DvIdentifier ident:
+                return new Identifier
+                {
+                    Value = ident.Id,
+                    System = ident.Issuer,
+                };
+
+            case Cluster cluster:
+                return ExtractClusterIdentifier(cluster);
+
             default:
                 return openEhrValue;
         }
+    }
+
+    private static Identifier ExtractClusterIdentifier(Cluster cluster)
+    {
+        // For v0.x reference-rule recursion: pull the first
+        // DvIdentifier (or DvText) value out of the cluster's items
+        // so downstream adapter writes get a meaningful Identifier.
+        if (cluster.Items is null)
+        {
+            return new Identifier();
+        }
+        foreach (Item item in cluster.Items)
+        {
+            if (item is DotnetOpenEhr.Rm.DataStructures.Element { Value: DvIdentifier ident })
+            {
+                return new Identifier { Value = ident.Id, System = ident.Issuer };
+            }
+            if (item is DotnetOpenEhr.Rm.DataStructures.Element { Value: DvText dt })
+            {
+                return new Identifier { Value = dt.Value };
+            }
+        }
+        return new Identifier();
     }
 
     private static ResourceReference RewriteEhrUri(string? uri)

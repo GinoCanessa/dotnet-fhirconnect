@@ -76,14 +76,4 @@ public sealed class ToFhirTests
         Assert.Equal(FhirRelease.R4, engine.Adapter.Release);
         Assert.IsType<R4Adapter>(engine.Adapter);
     }
-
-    [Fact]
-    public void ToOpenEhr_IsExplicitlyNotSupported_InV0x()
-    {
-        MappingBundle bundle = EngineFixtures.LoadBundle();
-        FhirConnectEngine engine = new FhirConnectEngine(bundle);
-        System.NotSupportedException ex = Assert.Throws<System.NotSupportedException>(
-            () => engine.ToOpenEhr(new FhirObservation()));
-        Assert.Contains("Phase 4 not landed", ex.Message);
-    }
 }

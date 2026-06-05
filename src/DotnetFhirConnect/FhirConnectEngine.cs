@@ -96,18 +96,23 @@ public sealed class FhirConnectEngine
 
     /// <summary>
     /// Transform a FHIR resource back into a typed openEHR
-    /// <see cref="Composition"/>. <strong>Phase 4 not landed in v0.x:</strong>
-    /// the public overload requires a Composition skeleton-bootstrap
-    /// step that lands in a later phase; use the internal overload
-    /// <see cref="ToOpenEhr(object, Composition)"/> until then.
+    /// <see cref="Composition"/>. In v0.x the skeleton bootstrap is
+    /// vital_status-scoped; other archetypes throw
+    /// <see cref="NotSupportedException"/> — callers can drop down
+    /// to the internal <see cref="ToOpenEhr(object, Composition)"/>
+    /// overload with their own skeleton when broader support is
+    /// needed.
     /// </summary>
-    /// <exception cref="NotSupportedException">Always.</exception>
+    [RequiresUnreferencedCode(
+        "Traverses Firely + DotnetOpenEhr.Aql typed graphs. Library is not AOT-publishable in v0.x.")]
     public Composition ToOpenEhr(object resource)
     {
-        throw new NotSupportedException(
-            "FhirConnectEngine.ToOpenEhr: Phase 4 not landed. The public overload " +
-            "requires a Composition skeleton-bootstrap step that lands in a later phase; " +
-            "use the internal ToOpenEhr(object, Composition) overload until then.");
+        ArgumentNullException.ThrowIfNull(resource);
+        string archetypeId = _model.Spec.OpenEhrConfig?.Archetype
+            ?? throw new InvalidOperationException(
+                "FhirConnectEngine.ToOpenEhr: model mapping has no spec.openEhrConfig.archetype to bootstrap a skeleton from.");
+        Composition skeleton = SkeletonBuilder.ForArchetype(archetypeId);
+        return ToOpenEhr(resource, skeleton);
     }
 
     /// <summary>

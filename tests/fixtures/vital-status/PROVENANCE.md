@@ -67,8 +67,13 @@ so drift cannot creep in silently.
 
 ## Generator script
 
-`gen-fixtures.csx` is a `dotnet script` single-file generator. At
-Phase 2 it is a stub that throws `NotImplementedException`; the real
-implementation lands as part of Phase 6a. CI does not invoke this
-script — it is a human-run helper for refreshing the Observation
-fixture after a mapping change.
+`gen-fixtures.csx` is retired. The fixture generator now lives as a
+console app at `tools/GenFixtures/`. To refresh the Observation
+fixture after a mapping change, run from the repo root:
+
+```pwsh
+dotnet run --project tools/GenFixtures
+```
+
+CI does not invoke the generator — it is a human-run helper.
+

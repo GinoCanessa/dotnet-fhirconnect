@@ -59,11 +59,7 @@ internal static class TransformVerb
                 return RunToFhir(bundle, inputPath, outputPath, output, error);
             }
 
-            // to-openehr — v0.x: not supported
-            error.WriteLine(
-                "transform: --direction to-openehr is not implemented in v0.x. " +
-                "v0.x ships the to-fhir direction only.");
-            return ExitCodes.TransformError;
+            return RunToOpenEhr(bundle, inputPath, outputPath, output, error);
         }
         catch (FileNotFoundException ex)
         {
@@ -97,6 +93,35 @@ internal static class TransformVerb
         Resource resource = engine.ToFhir(composition);
 
         string serialized = engine.Core.Adapter.SerializeResource(resource);
+        WriteOutput(serialized, outputPath, output);
+        return ExitCodes.Success;
+    }
+
+    [RequiresUnreferencedCode("See Run.")]
+    private static int RunToOpenEhr(
+        MappingBundle bundle,
+        string inputPath,
+        string outputPath,
+        TextWriter output,
+        TextWriter error)
+    {
+        FhirConnectEngine engine = new FhirConnectEngine(bundle);
+        string inputJson = File.ReadAllText(inputPath);
+
+        object resource;
+        try
+        {
+            resource = engine.Adapter.ParseResource(inputJson.AsSpan());
+        }
+        catch (Exception ex)
+        {
+            error.WriteLine($"transform: input '{inputPath}' did not parse as a FHIR resource: {ex.Message}");
+            return ExitCodes.IoOrParseError;
+        }
+
+        OpenEhrComposition composition = engine.ToOpenEhr(resource);
+        byte[] serializedUtf8 = OpenEhrJson.Serialize(composition);
+        string serialized = System.Text.Encoding.UTF8.GetString(serializedUtf8);
         WriteOutput(serialized, outputPath, output);
         return ExitCodes.Success;
     }

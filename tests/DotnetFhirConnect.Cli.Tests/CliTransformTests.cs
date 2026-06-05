@@ -22,20 +22,6 @@ public sealed class CliTransformTests
     }
 
     [Fact]
-    public void Transform_ToOpenEhr_IsNotImplementedInV0x()
-    {
-        CliHarness h = new CliHarness().Run(
-            "transform",
-            "--direction", "to-openehr",
-            "--mapping", CliFixtures.FixtureRoot,
-            "--input", CliFixtures.CompositionFile,
-            "--output", "-");
-
-        Assert.Equal(3, h.ExitCode); // TransformError
-        Assert.Contains("not implemented in v0.x", h.StdErr);
-    }
-
-    [Fact]
     public void Transform_MissingInputFile_ReturnsIoErrorWithDiagnostic()
     {
         string bogus = Path.Combine(Path.GetTempPath(), $"does-not-exist-{Guid.NewGuid():N}.json");

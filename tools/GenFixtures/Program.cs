@@ -6,8 +6,6 @@ using DotnetFhirConnect.Fhir.R4;
 using DotnetFhirConnect.Mappings;
 using DotnetOpenEhr.Serialization.Json;
 using OpenEhrComposition = DotnetOpenEhr.Rm.Composition.Composition;
-using FhirObservation = coreR4::Hl7.Fhir.Model.Observation;
-using ObservationStatus = coreR4::Hl7.Fhir.Model.ObservationStatus;
 
 namespace DotnetFhirConnect.Tools.GenFixtures;
 
@@ -51,13 +49,11 @@ internal static class Program
 
         R4Engine engine = new R4Engine(bundle);
         Hl7.Fhir.Model.Resource resource = engine.ToFhir(composition);
-        // v0.x scope: no mapping rule emits Observation.status (min
-        // cardinality 1 per FHIR R4). Patch in a sensible default so
-        // the produced JSON round-trips through Firely's parser.
-        if (resource is FhirObservation obs && obs.Status is null)
-        {
-            obs.Status = ObservationStatus.Final;
-        }
+        // No-fake-data policy: the produced fixture reflects exactly
+        // what the engine emits. Adapter-side tests that need a
+        // parser-complete Observation use a sibling
+        // `*.parseable.json` sample (added on demand if Firely's
+        // parser ever rejects the engine output).
         string observationJson = engine.Core.Adapter.SerializeResource(resource);
 
         File.WriteAllText(outputPath, observationJson, new UTF8Encoding(false));

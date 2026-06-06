@@ -102,7 +102,16 @@ public sealed record MappingRule(
     ReferenceSpec? Reference,
     string? SlotArchetype,
     ExtensionAction? Extension,
-    string? FhirCondition);
+    string? FhirCondition)
+{
+    /// <summary>
+    /// Parse-time classification of this rule's executable shape.
+    /// Computed on read (not stored) so merged rules produced by
+    /// <c>EffectiveMapping.MergeAdd</c> auto-reclassify correctly
+    /// without any extra glue.
+    /// </summary>
+    public RuleKind Kind => RuleClassifier.Classify(this);
+}
 
 /// <summary>
 /// <c>context:</c> block on a context file.

@@ -2,6 +2,7 @@ extern alias coreR4;
 using Observation = coreR4::Hl7.Fhir.Model.Observation;
 using Annotation = coreR4::Hl7.Fhir.Model.Annotation;
 using System;
+using System.IO;
 using System.Linq;
 using DotnetFhirConnect;
 using DotnetFhirConnect.Engine;
@@ -247,6 +248,213 @@ public sealed class Phase6bExtensionDispatchTests
             FhirRoot: "$resource");
         MappingRuleExecutor executor = new MappingRuleExecutor(engine.Adapter, TransformDirection.ToFhir);
         executor.ExecuteAll(ctx, engine.EffectiveMapping.Rules);
+    }
+
+    [Fact]
+    public void RuleClassifier_ClassifiesEveryKind()
+    {
+        // Direct copy
+        MappingRule direct = new MappingRule(
+            Name: "d",
+            With: new WithBlock(Fhir: "$resource.code", OpenEhr: "$archetype/x", Type: WithType.Default),
+            Unidirectional: null,
+            Manual: null,
+            FollowedBy: null,
+            Link: null,
+            Reference: null,
+            SlotArchetype: null,
+            Extension: null,
+            FhirCondition: null);
+        Assert.Equal(RuleKind.DirectCopy, direct.Kind);
+
+        // Wrapper followedBy
+        MappingRule wrapper = new MappingRule(
+            Name: "w",
+            With: new WithBlock(Fhir: "$resource.x", OpenEhr: "$archetype/x", Type: WithType.None),
+            Unidirectional: null,
+            Manual: null,
+            FollowedBy: new FollowedBy([direct]),
+            Link: null,
+            Reference: null,
+            SlotArchetype: null,
+            Extension: null,
+            FhirCondition: null);
+        Assert.Equal(RuleKind.WrapperFollowedBy, wrapper.Kind);
+
+        // Manual
+        MappingRule manual = new MappingRule(
+            Name: "m",
+            With: new WithBlock(Fhir: "$resource", OpenEhr: null, Type: WithType.Default),
+            Unidirectional: null,
+            Manual: [new ManualEntry("e", [new ManualField("x", "v")], null)],
+            FollowedBy: null,
+            Link: null,
+            Reference: null,
+            SlotArchetype: null,
+            Extension: null,
+            FhirCondition: null);
+        Assert.Equal(RuleKind.Manual, manual.Kind);
+
+        // Link
+        MappingRule link = new MappingRule(
+            Name: "l",
+            With: new WithBlock(Fhir: "$resource.partOf", OpenEhr: "$archetype/links", Type: WithType.Default),
+            Unidirectional: null,
+            Manual: null,
+            FollowedBy: null,
+            Link: new LinkSpec("m", "t"),
+            Reference: null,
+            SlotArchetype: null,
+            Extension: null,
+            FhirCondition: null);
+        Assert.Equal(RuleKind.Link, link.Kind);
+
+        // Reference
+        MappingRule reference = new MappingRule(
+            Name: "r",
+            With: new WithBlock(Fhir: "$resource.encounter.reference", OpenEhr: "$reference", Type: WithType.None),
+            Unidirectional: null,
+            Manual: null,
+            FollowedBy: null,
+            Link: null,
+            Reference: new ReferenceSpec("Encounter", []),
+            SlotArchetype: null,
+            Extension: null,
+            FhirCondition: null);
+        Assert.Equal(RuleKind.Reference, reference.Kind);
+
+        // SlotArchetypeMarker
+        MappingRule marker = new MappingRule(
+            Name: "s",
+            With: new WithBlock(Fhir: "$resource", OpenEhr: "$composition", Type: WithType.None),
+            Unidirectional: null,
+            Manual: null,
+            FollowedBy: null,
+            Link: null,
+            Reference: null,
+            SlotArchetype: "COMPOSITION.report.v1.Observation",
+            Extension: null,
+            FhirCondition: null);
+        Assert.Equal(RuleKind.SlotArchetypeMarker, marker.Kind);
+
+        // Unknown — empty rule with no executable shape.
+        MappingRule unknown = new MappingRule(
+            Name: "u",
+            With: new WithBlock(Fhir: null, OpenEhr: null, Type: WithType.Default),
+            Unidirectional: null,
+            Manual: null,
+            FollowedBy: null,
+            Link: null,
+            Reference: null,
+            SlotArchetype: null,
+            Extension: null,
+            FhirCondition: null);
+        Assert.Equal(RuleKind.Unknown, unknown.Kind);
+    }
+
+    [Fact]
+    public void RuleClassifier_VitalStatusBundle_HasNoUnknownRules()
+    {
+        MappingBundle bundle = EngineFixtures.LoadBundle();
+        foreach (ModelMapping model in bundle.Models.Values)
+        {
+            foreach (MappingRule rule in model.Mappings)
+            {
+                AssertNotUnknown(rule, model.Metadata.Name);
+            }
+        }
+        foreach (ExtensionMapping ext in bundle.Extensions.Values)
+        {
+            foreach (MappingRule rule in ext.Mappings)
+            {
+                AssertNotUnknown(rule, ext.Metadata.Name);
+            }
+        }
+
+        static void AssertNotUnknown(MappingRule rule, string source)
+        {
+            AssertRule(rule, source);
+            if (rule.FollowedBy is { Mappings.Count: > 0 } fb)
+            {
+                foreach (MappingRule child in fb.Mappings)
+                {
+                    AssertNotUnknown(child, source);
+                }
+            }
+            if (rule.Reference is { Mappings.Count: > 0 } refSpec)
+            {
+                foreach (MappingRule child in refSpec.Mappings)
+                {
+                    AssertNotUnknown(child, source);
+                }
+            }
+        }
+
+        static void AssertRule(MappingRule rule, string source) =>
+            Assert.True(
+                rule.Kind != RuleKind.Unknown,
+                $"Rule '{rule.Name}' in '{source}' classified as Unknown — classifier is missing a real shape.");
+    }
+
+    [Fact]
+    public void RuleClassifier_AmbiguousRule_RejectedAtLoad()
+    {
+        string yaml = """
+            grammar: FHIRConnect/v1.0.0
+            type: model
+            metadata:
+              name: ambiguous.test
+              version: 0.0.1
+            spec:
+              system: FHIR
+              version: R4
+              openEhrConfig:
+                archetype: openEHR-EHR-EVALUATION.synth.v1
+              fhirConfig:
+                structureDefinition: http://hl7.org/fhir/StructureDefinition/Observation
+            mappings:
+              - name: ambiguousLinkPlusReference
+                with:
+                  fhir: "$resource.encounter.reference"
+                  openehr: "$reference"
+                link:
+                  meaning: "x"
+                  type: "y"
+                reference:
+                  resourceType: "Encounter"
+                  mappings: []
+            """;
+        string tempFile = Path.Combine(Path.GetTempPath(), $"ambiguous-{Guid.NewGuid():N}.yml");
+        File.WriteAllText(tempFile, yaml);
+        try
+        {
+            FhirConnectFormatException ex = Assert.Throws<FhirConnectFormatException>(
+                () => FhirConnectMapping.Load(tempFile));
+            Assert.Contains("link", ex.Message, StringComparison.Ordinal);
+            Assert.Contains("reference", ex.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void RuleClassifier_PartOfReferenceRules_LoadCleanly()
+    {
+        // The five top-level partOfReference rules in
+        // tests/fixtures/vital-status/model/vital_status.v1.yml carry
+        // both `link` AND `with.openehr` / `with.fhir`. with.openehr
+        // and with.fhir are NOT primary slots, so the ambiguity
+        // throw must not fire for them.
+        MappingBundle bundle = EngineFixtures.LoadBundle();
+        ModelMapping model = bundle.Models["EVALUATION.vital_status.v1"];
+        int partOfRefCount = model.Mappings.Count(r => r.Name == "partOfReference");
+        Assert.Equal(5, partOfRefCount);
+        foreach (MappingRule rule in model.Mappings.Where(r => r.Name == "partOfReference"))
+        {
+            Assert.Equal(RuleKind.Link, rule.Kind);
+        }
     }
 
     private static Evaluation FindEvaluation(OpenEhrComposition comp)

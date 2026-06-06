@@ -345,7 +345,7 @@ internal static class MappingYamlReader
 
         string? fhirCondition = TryGetScalar(node, "fhirCondition");
 
-        return new MappingRule(
+        MappingRule rule = new MappingRule(
             name,
             with,
             unidirectional,
@@ -356,6 +356,16 @@ internal static class MappingYamlReader
             slotArchetype,
             extension,
             fhirCondition);
+
+        IReadOnlyList<string> ambiguous = RuleClassifier.AmbiguousPrimarySlots(rule);
+        if (ambiguous.Count > 1)
+        {
+            throw new FhirConnectFormatException(
+                $"Rule '{name}' in '{filePath}' carries ambiguous primary slots [{string.Join(", ", ambiguous)}]. Each rule may carry at most one of: reference, link, manual, followedBy (with type:NONE).",
+                filePath);
+        }
+
+        return rule;
     }
 
     private static IReadOnlyList<ManualEntry> ReadManual(YamlNode node, string filePath, string ruleName)

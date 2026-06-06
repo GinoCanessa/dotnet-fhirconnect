@@ -57,57 +57,55 @@ internal sealed class MappingRuleExecutor
             return;
         }
 
-        if (rule.Reference is not null)
+        switch (rule.Kind)
         {
-            ExecuteReference(ctx, rule);
-            return;
-        }
+            case RuleKind.Reference:
+                ExecuteReference(ctx, rule);
+                return;
 
-        if (rule.FollowedBy is { Mappings.Count: > 0 } fb &&
-            rule.With.Type == WithType.None)
-        {
-            ExecuteWrapperFollowedBy(ctx, rule, fb);
-            return;
-        }
+            case RuleKind.WrapperFollowedBy:
+                ExecuteWrapperFollowedBy(ctx, rule, rule.FollowedBy!);
+                return;
 
-        if (rule.Link is not null)
-        {
-            ExecuteLink(ctx, rule);
-            return;
-        }
+            case RuleKind.Link:
+                ExecuteLink(ctx, rule);
+                return;
 
-        if (rule.Manual is { Count: > 0 } manualEntries)
-        {
-            ExecuteManual(ctx, rule, manualEntries);
-            return;
-        }
+            case RuleKind.Manual:
+                ExecuteManual(ctx, rule, rule.Manual!);
+                return;
 
-        // A slotArchetype-only rule with no executable bits and no
-        // direct openehr/fhir copy semantics (type:NONE wrapper-less)
-        // is an informational binding for the merge layer's
-        // transitive bound-name set and has no executable effect.
-        // Rules with slotArchetype + type:default + openehr/fhir paths
-        // are real direct rules — slotArchetype is just an extra hint.
-        if (rule.SlotArchetype is not null &&
-            rule.With.Type == WithType.None &&
-            rule.FollowedBy is null &&
-            rule.Manual is null &&
-            rule.Link is null)
-        {
-            return;
-        }
+            case RuleKind.SlotArchetypeMarker:
+                // A slotArchetype-only rule with no executable bits
+                // and no direct openehr/fhir copy semantics
+                // (type:NONE wrapper-less) is an informational
+                // binding for the merge layer's transitive
+                // bound-name set and has no executable effect. Rules
+                // with slotArchetype + type:default + openehr/fhir
+                // paths are real direct rules — slotArchetype is
+                // just an extra hint — and classify as DirectCopy.
+                return;
 
-        if (rule.With.OpenEhr is not null && rule.With.Fhir is not null &&
-            rule.With.Type != WithType.None)
-        {
-            if (_direction == TransformDirection.ToFhir)
-            {
-                ExecuteDirectToFhir(ctx, rule);
-            }
-            else
-            {
-                ExecuteDirectToOpenEhr(ctx, rule);
-            }
+            case RuleKind.DirectCopy:
+                if (_direction == TransformDirection.ToFhir)
+                {
+                    ExecuteDirectToFhir(ctx, rule);
+                }
+                else
+                {
+                    ExecuteDirectToOpenEhr(ctx, rule);
+                }
+                return;
+
+            case RuleKind.Unknown:
+            default:
+                // Preserve the pre-Phase-4 silent no-op semantics
+                // for inputs that fell off the bottom of the
+                // historical if-chain. The loud failure path is the
+                // load-time AmbiguousPrimarySlots throw in
+                // MappingYamlReader, not the execute-time default
+                // arm.
+                return;
         }
     }
 

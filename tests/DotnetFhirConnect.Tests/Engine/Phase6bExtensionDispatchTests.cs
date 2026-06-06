@@ -2,6 +2,7 @@ extern alias coreR4;
 using Observation = coreR4::Hl7.Fhir.Model.Observation;
 using Annotation = coreR4::Hl7.Fhir.Model.Annotation;
 using System;
+using System.Linq;
 using DotnetFhirConnect;
 using DotnetFhirConnect.Engine;
 using DotnetFhirConnect.Fhir;
@@ -93,6 +94,113 @@ public sealed class Phase6bExtensionDispatchTests
         Resource produced = engine.ToFhir(composition);
         Observation obs = Assert.IsType<Observation>(produced);
         Assert.NotNull(obs);
+    }
+
+    [Fact]
+    public void Reference_KdsComposition_Encounter_BuildsReference()
+    {
+        // Narrow regression for the outer reference rule
+        // (fallIdentifikationReference in KDS_composition.yml): the
+        // executor must hand a ResourceReference value to the adapter
+        // at the encounter path (after stripping the `.reference`
+        // suffix per MappingRuleExecutor.cs:254). Asserting on
+        // `rr.Reference == "Encounter/<id>"` belongs to deferred item
+        // 2a — that rule's with.openehr is `$reference` so the
+        // executor leaves Reference null in v0.x.
+        MappingBundle bundle = EngineFixtures.LoadBundle();
+        OpenEhrComposition composition = EngineFixtures.LoadComposition();
+        RecordingFhirAdapter recorder = new RecordingFhirAdapter(new R4Adapter());
+        FhirConnectEngine engine = new FhirConnectEngine(bundle, recorder);
+
+        engine.ToFhir(composition);
+
+        bool found = false;
+        foreach (RecordingFhirAdapter.Capture c in recorder.Captures)
+        {
+            if (c.Value is ResourceReference &&
+                (c.Path == "$resource.encounter" || c.Path == "Observation.encounter" || c.Path == "encounter"))
+            {
+                found = true;
+                break;
+            }
+        }
+        Assert.True(found, "Expected a TrySetValue capture with a ResourceReference value at the encounter path; got: " +
+            string.Join(", ", recorder.Captures.Select(c => $"({c.ResourceType},{c.Path},{c.Value?.GetType().Name ?? "null"})")));
+    }
+
+    [Fact]
+    public void Reference_KdsComposition_FallIdentifikationIdentifier_PopulatesNestedIdentifier()
+    {
+        // Inner rule `identifierInReference` under the
+        // fallIdentifikationReference reference scope writes
+        // `$fhirRoot.identifier` against the ResourceReference. The
+        // case_identification cluster carries CASE-12345.
+        MappingBundle bundle = EngineFixtures.LoadBundle();
+        OpenEhrComposition composition = EngineFixtures.LoadComposition();
+        RecordingFhirAdapter recorder = new RecordingFhirAdapter(new R4Adapter());
+        FhirConnectEngine engine = new FhirConnectEngine(bundle, recorder);
+
+        engine.ToFhir(composition);
+
+        RecordingFhirAdapter.Capture? hit = null;
+        foreach (RecordingFhirAdapter.Capture c in recorder.Captures)
+        {
+            if (c.ResourceType == "ResourceReference" &&
+                c.Value is Identifier id &&
+                string.Equals(id.Value, "CASE-12345", StringComparison.Ordinal))
+            {
+                hit = c;
+                break;
+            }
+        }
+        Assert.True(hit.HasValue, "Expected a ResourceReference TrySetValue capture with Identifier{Value=CASE-12345}; got: " +
+            string.Join(", ", recorder.Captures.Select(c => $"({c.ResourceType},{c.Path},{c.Value?.GetType().Name ?? "null"})")));
+        string p = hit!.Value.Path;
+        Assert.True(
+            p == "$resource.identifier" || p == "Observation.identifier" || p == "identifier",
+            $"Expected identifier-path capture (post-StripResourcePrefix == 'identifier'); got '{p}'.");
+    }
+
+    [Fact]
+    public void SlotArchetype_HintIsHonouredForCluster()
+    {
+        // A rule that carries both slotArchetype AND a real
+        // with.openehr / with.fhir pair (with.Type != None) must NOT
+        // be silently treated as a marker no-op. The slotArchetype is
+        // an informational binding hint; the executor still runs the
+        // direct copy. Asserts exactly one TrySetValue capture lands
+        // for the synthetic rule's resolved path.
+        MappingRule synthetic = new MappingRule(
+            Name: "slotArchHintDirect",
+            With: new WithBlock(Fhir: "$resource.code", OpenEhr: "$archetype/data[at0001]/items[at0006]", Type: WithType.Default),
+            Unidirectional: null,
+            Manual: null,
+            FollowedBy: null,
+            Link: null,
+            Reference: null,
+            SlotArchetype: "CLUSTER.fake_hint.v0",
+            Extension: null,
+            FhirCondition: null);
+        ModelMapping model = SyntheticModel("syntheticSlotHint", "openEHR-EHR-EVALUATION.vital_status.v1", [synthetic]);
+        MappingBundle bundle = new MappingBundle(
+            Context: null,
+            Models: new Dictionary<string, ModelMapping> { [model.Metadata.Name] = model },
+            Extensions: new Dictionary<string, ExtensionMapping>());
+
+        OpenEhrComposition composition = EngineFixtures.LoadComposition();
+        RecordingFhirAdapter recorder = new RecordingFhirAdapter(new R4Adapter());
+        FhirConnectEngine engine = new FhirConnectEngine(bundle, recorder);
+
+        engine.ToFhir(composition);
+
+        int captureCount = recorder.Captures.Count;
+        Assert.True(
+            captureCount == 1,
+            $"Expected exactly 1 TrySetValue capture (slotArchetype hint must not suppress a direct rule); got {captureCount}: " +
+            string.Join(", ", recorder.Captures.Select(c => $"({c.ResourceType},{c.Path},{c.Value?.GetType().Name ?? "null"})")));
+        RecordingFhirAdapter.Capture only = recorder.Captures[0];
+        Assert.Equal("$resource.code", only.Path);
+        Assert.IsType<CodeableConcept>(only.Value);
     }
 
     [Fact]

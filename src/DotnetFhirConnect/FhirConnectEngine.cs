@@ -62,6 +62,36 @@ public sealed class FhirConnectEngine
         _effectiveMapping = EffectiveMapping.Build(_model, bundle.Extensions.Values, _logger);
     }
 
+    /// <summary>
+    /// Test-only seam: initialize the engine with a caller-supplied
+    /// <see cref="IFhirAdapter"/>, bypassing
+    /// <see cref="FhirAdapterFactory"/>. Lets the test suite inject a
+    /// decorator (e.g. a recording adapter) to inspect the executor →
+    /// adapter contract without a parallel adapter implementation.
+    /// </summary>
+    /// <param name="bundle">Pre-loaded FHIRconnect mapping bundle.</param>
+    /// <param name="adapter">The adapter to use; must match the
+    /// bundle's spec.version. Not validated — tests own the wiring.</param>
+    /// <param name="logger">Optional logger; defaults to
+    /// <see cref="NullLogger{T}.Instance"/>.</param>
+    internal FhirConnectEngine(
+        MappingBundle bundle,
+        IFhirAdapter adapter,
+        ILogger<FhirConnectEngine>? logger = null)
+    {
+        _bundle = bundle ?? throw new ArgumentNullException(nameof(bundle));
+        if (bundle.Models.Count == 0)
+        {
+            throw new ArgumentException(
+                "FhirConnectEngine: bundle contains no model mapping. Load the model directory alongside the project bundle.",
+                nameof(bundle));
+        }
+        _logger = logger ?? NullLogger<FhirConnectEngine>.Instance;
+        _model = SelectStartModel(bundle);
+        _adapter = adapter ?? throw new ArgumentNullException(nameof(adapter));
+        _effectiveMapping = EffectiveMapping.Build(_model, bundle.Extensions.Values, _logger);
+    }
+
     /// <summary>The FHIR adapter chosen from <c>spec.version</c>.</summary>
     public IFhirAdapter Adapter => _adapter;
 

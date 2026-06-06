@@ -17,8 +17,19 @@ namespace DotnetFhirConnect.Tests.Fhir;
 public sealed class R4AdapterTests
 {
     private static string ObservationFixture => Path.Combine(
-        AppContext.BaseDirectory, "fixtures", "vital-status", "samples", "vital-status.observation.r4.json");
+        AppContext.BaseDirectory, "fixtures", "vital-status", "samples", "vital-status.observation.r4.parseable.json");
 
+    /// <summary>
+    /// Adapter-side parse → serialize round-trip on a hand-authored
+    /// parser-complete vital_status Observation. Uses the
+    /// `*.parseable.json` sample (with `Observation.status: "final"`)
+    /// rather than the engine-emitted `*.observation.r4.json`
+    /// fixture because Firely's R4 deserializer enforces R4's
+    /// `Observation.status` min-cardinality 1 at parse time, and the
+    /// v0.x mapping bundle has no rule that emits `status` — so the
+    /// engine-emitted fixture is intentionally `status`-less per the
+    /// no-fake-data policy (slot 0605-03).
+    /// </summary>
     [Fact]
     public void Parse_ThenSerialize_RoundTripsSemanticEquivalence()
     {

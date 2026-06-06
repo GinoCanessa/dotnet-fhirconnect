@@ -19,7 +19,7 @@ internal static class CliFixtures
         FixtureRoot, "samples", "vital-status.composition.canonical.json");
 
     public static string ObservationFile => Path.Combine(
-        FixtureRoot, "samples", "vital-status.observation.r4.json");
+        FixtureRoot, "samples", "vital-status.observation.r4.parseable.json");
 
     public static string ProjectDir => Path.Combine(FixtureRoot, "project");
 }

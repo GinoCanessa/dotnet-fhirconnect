@@ -137,7 +137,7 @@ public sealed class FhirConnectEngine
             Resource: resource,
             FhirRoot: "$resource");
 
-        MappingRuleExecutor executor = new MappingRuleExecutor(_adapter, TransformDirection.ToFhir);
+        MappingRuleExecutor executor = new MappingRuleExecutor(_adapter, TransformDirection.ToFhir, _logger);
         executor.ExecuteAll(ctx, _effectiveMapping.Rules);
         return resource;
     }
@@ -190,7 +190,7 @@ public sealed class FhirConnectEngine
             Resource: resource,
             FhirRoot: "$resource");
 
-        MappingRuleExecutor executor = new MappingRuleExecutor(_adapter, TransformDirection.ToOpenEhr);
+        MappingRuleExecutor executor = new MappingRuleExecutor(_adapter, TransformDirection.ToOpenEhr, _logger);
         executor.ExecuteAll(ctx, _effectiveMapping.Rules);
         return skeleton;
     }

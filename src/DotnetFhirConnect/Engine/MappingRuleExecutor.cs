@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using DotnetFhirConnect.Fhir;
 using DotnetFhirConnect.Mappings;
 using DotnetOpenEhr.Rm.Common;
+using Microsoft.Extensions.Logging;
 using FhirIdentifier = Hl7.Fhir.Model.Identifier;
 using FhirResourceReference = Hl7.Fhir.Model.ResourceReference;
 
@@ -33,11 +34,13 @@ internal sealed class MappingRuleExecutor
 
     private readonly IFhirAdapter _adapter;
     private readonly TransformDirection _direction;
+    private readonly ILogger? _logger;
 
-    public MappingRuleExecutor(IFhirAdapter adapter, TransformDirection direction)
+    public MappingRuleExecutor(IFhirAdapter adapter, TransformDirection direction, ILogger? logger = null)
     {
         _adapter = adapter;
         _direction = direction;
+        _logger = logger;
     }
 
     [RequiresUnreferencedCode("See FhirConnectEngine.")]
@@ -185,7 +188,7 @@ internal sealed class MappingRuleExecutor
         {
             return;
         }
-        (bool ok, string? err) = OpenEhrPathWriter.Write(ctx.Composition, rule.With.OpenEhr!, translated);
+        (bool ok, string? err) = OpenEhrPathWriter.Write(ctx.Composition, rule.With.OpenEhr!, translated, _logger);
         if (!ok)
         {
             _ = err;
@@ -244,11 +247,23 @@ internal sealed class MappingRuleExecutor
         }
 
         string fhirPath = ResolveFhirPath(ctx, NormalizeFhirPath(rule.With.Fhir));
-        // FHIRconnect convention: when an outer reference rule targets
-        // `<x>.reference`, the intent is "make <x> a reference to the
-        // referenced resource", not "set the reference string". Strip
-        // the trailing `.reference` so the whole ResourceReference is
-        // written into the parent field.
+        // FHIRconnect `.reference`-strip heuristic (v0.x interpretation):
+        // when an outer reference rule targets `<x>.reference`, the
+        // executor treats the trailing `.reference` segment as
+        // syntactic sugar meaning "write the freshly built
+        // ResourceReference into <x>", not "set <x>.reference to a
+        // bare reference string". The whole ResourceReference is
+        // pushed into the parent field instead of just its Reference
+        // property. This shape is triggered by rules of the form
+        //   reference: { ... }
+        //   with: { fhir: "$resource.<X>.reference", openehr: "$reference" }
+        // where the nested mappings populate the ResourceReference's
+        // Identifier / Reference fields. The FHIRconnect v1.0.0 spec
+        // is ambiguous on this point; alternative interpretations
+        // (set only the string, or always write the full RR) exist
+        // and may be chosen by other engines. See the discussion in
+        // featurerequest.md item 3b for the deferred-against-spec
+        // analysis.
         if (fhirPath.EndsWith(".reference", StringComparison.Ordinal))
         {
             fhirPath = fhirPath.Substring(0, fhirPath.Length - ".reference".Length);
@@ -306,10 +321,23 @@ internal sealed class MappingRuleExecutor
             string fhirPath = ResolveFhirPath(ctx, NormalizeFhirPath(rule.With.Fhir!));
             if (!_adapter.TrySetValue(ctx.Resource, fhirPath, translated, out string? error))
             {
-                // Best-effort: link rules inside a nested reference
-                // scope may target paths the adapter does not model on
-                // ResourceReference (v0.x scope). Tolerate.
-                _ = error;
+                // Tolerance is scoped to nested-in-reference link
+                // rules: the adapter does not model every
+                // reference-shaped link target on
+                // ResourceReference, so a swallowed failure inside a
+                // reference scope is expected v0.x behaviour.
+                // Top-level link rules (e.g. the five
+                // partOfReference rules in vital_status.v1.yml) hit
+                // R4Adapter's partOf / basedOn / encounter /
+                // hasMember arms directly and must surface adapter
+                // errors loudly.
+                if (ctx.InReferenceRecursion)
+                {
+                    _ = error;
+                    continue;
+                }
+                throw new InvalidOperationException(
+                    $"FhirConnectEngine: link rule '{rule.Name}' failed to assign FHIR path '{fhirPath}' (raw '{rule.With.Fhir}'): {error}");
             }
         }
     }
@@ -356,7 +384,7 @@ internal sealed class MappingRuleExecutor
             {
                 DotnetOpenEhr.Rm.DataTypes.Text.DvText boxed =
                     new DotnetOpenEhr.Rm.DataTypes.Text.DvText { Value = field.Value };
-                (bool ok, string? err) = OpenEhrPathWriter.Write(ctx.Composition, field.Path, boxed);
+                (bool ok, string? err) = OpenEhrPathWriter.Write(ctx.Composition, field.Path, boxed, _logger);
                 if (!ok)
                 {
                     _ = err;

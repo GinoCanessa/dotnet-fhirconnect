@@ -7,6 +7,7 @@ using DotnetOpenEhr.Rm.Composition;
 using DotnetOpenEhr.Rm.DataStructures;
 using DotnetOpenEhr.Rm.DataTypes.DateTime;
 using DotnetOpenEhr.Rm.DataTypes.Text;
+using Microsoft.Extensions.Logging;
 
 namespace DotnetFhirConnect.Engine;
 
@@ -64,16 +65,35 @@ internal static class OpenEhrPathWriter
     /// Write <paramref name="value"/> at <paramref name="path"/>
     /// against <paramref name="composition"/>. Returns
     /// <c>(true, null)</c> on success or <c>(false, error)</c> when
-    /// the path is outside the vital_status scope envelope.
+    /// the path is outside the vital_status scope envelope. When the
+    /// writer refuses a path it emits a single
+    /// <see cref="LogLevel.Debug"/> entry on
+    /// <paramref name="logger"/> (if supplied) so the caller can
+    /// trace silent ToOpenEhr refusals without instrumenting every
+    /// rule.
     /// </summary>
     public static (bool Ok, string? Error) Write(
         Composition composition,
         string path,
-        object? value)
+        object? value,
+        ILogger? logger = null)
     {
         ArgumentNullException.ThrowIfNull(composition);
         ArgumentNullException.ThrowIfNull(path);
 
+        (bool ok, string? err) = WriteCore(composition, path, value);
+        if (!ok && logger is not null)
+        {
+            logger.LogDebug("OpenEhrPathWriter refused path '{Path}': {Error}", path, err);
+        }
+        return (ok, err);
+    }
+
+    private static (bool Ok, string? Error) WriteCore(
+        Composition composition,
+        string path,
+        object? value)
+    {
         (object? root, string remainder, string prefix) = NormalizePath(composition, path);
         if (root is null)
         {

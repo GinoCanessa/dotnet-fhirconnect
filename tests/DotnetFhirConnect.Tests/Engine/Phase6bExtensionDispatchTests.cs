@@ -457,6 +457,89 @@ public sealed class Phase6bExtensionDispatchTests
         }
     }
 
+    [Fact]
+    public void ExecuteLink_OutsideReferenceRecursion_Throws()
+    {
+        // Phase 7 gating regression: at the top level (not inside a
+        // reference rule), a link rule whose adapter write fails
+        // must surface the failure loudly — not silently swallow it.
+        AlwaysFailAdapter stubInner = new AlwaysFailAdapter();
+        RecordingFhirAdapter recorder = new RecordingFhirAdapter(stubInner);
+        MappingRule linkRule = new MappingRule(
+            Name: "failingLink",
+            With: new WithBlock(Fhir: "$resource.partOf", OpenEhr: "$archetype/links", Type: WithType.Default),
+            Unidirectional: null,
+            Manual: null,
+            FollowedBy: null,
+            Link: new LinkSpec("Part of referenced event", "partOf"),
+            Reference: null,
+            SlotArchetype: null,
+            Extension: null,
+            FhirCondition: null);
+
+        OpenEhrComposition composition = EngineFixtures.LoadComposition();
+        Evaluation eval = FindEvaluation(composition);
+        BindingContext ctx = new BindingContext(
+            Composition: composition,
+            Archetype: eval,
+            OpenEhrRoot: eval,
+            Resource: new coreR4::Hl7.Fhir.Model.Observation(),
+            FhirRoot: "$resource",
+            InReferenceRecursion: false);
+        MappingRuleExecutor executor = new MappingRuleExecutor(recorder, TransformDirection.ToFhir);
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => executor.Execute(ctx, linkRule));
+        Assert.Contains("failingLink", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("synthetic", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ExecuteLink_TopLevelPartOfRules_LoadAndRunGreen()
+    {
+        // Regression pin: the gating must NOT introduce a regression
+        // for the canonical bundle's five top-level partOfReference
+        // rules. Their adapter writes succeed against R4Adapter's
+        // partOf/basedOn/encounter/hasMember arms today, so ToFhir
+        // must complete without throwing.
+        MappingBundle bundle = EngineFixtures.LoadBundle();
+        OpenEhrComposition composition = EngineFixtures.LoadComposition();
+        R4Engine engine = new R4Engine(bundle);
+        Resource produced = engine.ToFhir(composition);
+        Assert.IsType<Observation>(produced);
+    }
+
+    /// <summary>
+    /// Stub IFhirAdapter whose TrySetValue always returns
+    /// <c>(false, "synthetic error")</c>. Used by the Phase 7
+    /// ExecuteLink gating test.
+    /// </summary>
+    private sealed class AlwaysFailAdapter : IFhirAdapter
+    {
+        public FhirRelease Release => FhirRelease.R4;
+        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode("Stub.")]
+        public object ParseResource(ReadOnlySpan<char> json) =>
+            throw new NotImplementedException();
+        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode("Stub.")]
+        public string SerializeResource(object resource) =>
+            throw new NotImplementedException();
+        public object CreateResource(string typeName) => new coreR4::Hl7.Fhir.Model.Observation();
+        public bool TrySetValue(
+            object resource,
+            string path,
+            object? value,
+            [System.Diagnostics.CodeAnalysis.NotNullWhen(false)] out string? error)
+        {
+            error = "synthetic error";
+            return false;
+        }
+        public bool TryGetValue(object resource, string path, out object? value)
+        {
+            value = null;
+            return false;
+        }
+    }
+
     private static Evaluation FindEvaluation(OpenEhrComposition comp)
     {
         Assert.NotNull(comp.Content);

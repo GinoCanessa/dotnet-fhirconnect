@@ -1,0 +1,20 @@
+grammar: FHIRConnect/v1.0.0
+type: model
+metadata:
+  name: EVALUATION.vital_status.v1
+  version: 0.0.1
+spec:
+  system: FHIR
+  version: R4B
+  openEhrConfig:
+    archetype: openEHR-EHR-EVALUATION.vital_status.v1
+    revision: 1.0.1-alpha
+  fhirConfig:
+    structureDefinition: http://hl7.org/fhir/StructureDefinition/Observation
+
+mappings:
+
+  - name: "vitalStatus"
+    with:
+      fhir: "$resource.code"
+      openehr: "$archetype/data[at0001]/items[at0006]"

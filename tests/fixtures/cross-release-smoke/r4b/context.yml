@@ -1,0 +1,20 @@
+grammar: FHIRConnect/v1.0.0
+type: context
+metadata:
+  name: cross-release-smoke-r4b.context
+  version: 0.0.1
+spec:
+  system: FHIR
+  version: R4B
+
+context:
+  profile:
+    url: "http://example.org/StructureDefinition/cross-release-smoke-r4b"
+    version: "0.0.1"
+  template:
+    id: "cross_release_smoke_r4b"
+    sem_ver: "0.0.1"
+  archetypes:
+    - "EVALUATION.vital_status.v1"
+  extensions: []
+  start: "EVALUATION.vital_status.v1"

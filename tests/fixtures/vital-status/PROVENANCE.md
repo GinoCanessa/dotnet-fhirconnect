@@ -120,3 +120,26 @@ dotnet run --project tools/GenFixtures
 
 CI does not invoke the generator — it is a human-run helper.
 
+## Operational template
+
+| Vendored path | Source absolute path | Date vendored |
+|---|---|---|
+| `templates/KDS_Vitalstatus.opt` | `C:\ai\git\openfhir\core\src\test\resources\kds\vitalstatus\KDS_Vitalstatus.opt` | 2026-06-10 |
+
+Vendored **byte-for-byte** (no edits). The OPT1.4 XML carries
+`template_id=KDS_Vitalstatus`, `original_language=de` (ISO 639-1 `de`),
+and **no** `en` translation, so the writer-facing element terms are the
+German literals `at0006`→`Vitalstatus`, `at0013`→`Kommentar`,
+`at0018`→`Zeitpunkt der Feststellung`.
+
+- **Source-repo license:** Apache-2.0 (`C:\ai\git\openfhir\LICENSE`).
+- **Per-file copyright:** `© HiGHmed` (the OPT's `<copyright>` block; its
+  `<other_details id="licence">` element is empty).
+- **Upstream-canonical origin:** the template originates from the openEHR
+  **CKM** (`KDS_Vitalstatus`); the vendored bytes come from the `openfhir`
+  test-resource mirror, which is the proximate source here.
+- The local spec mirror `C:\ai\support\openEHR\` holds spec HTML only (no
+  OPT templates), so the "prefer local mirror" preference points at an
+  empty well for OPTs — refresh declined for this slot.
+
+

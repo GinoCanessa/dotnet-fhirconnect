@@ -285,6 +285,8 @@ node_modules/
 
 # Visual Studio 6 workspace options file
 *.opt
+# ...but vendored openEHR operational templates under tests/fixtures are real fixtures.
+!tests/fixtures/**/*.opt
 
 # Visual Studio 6 auto-generated workspace file (contains which files were open etc.)
 *.vbw

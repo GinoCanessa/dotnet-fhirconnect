@@ -24,15 +24,24 @@ namespace DotnetFhirConnect.Engine;
 /// Despite the generic name, this writer is intentionally
 /// <strong>not</strong> generic in v0.x. There is no SDK factory for
 /// "give me an <see cref="Element"/> shaped for archetype path X"
-/// today; the writer therefore carries a per-at-code DV factory
-/// table for the <c>vital_status</c> model
+/// today; the writer therefore handles the leaf shapes the
+/// <c>vital_status</c> model uses
 /// (<c>at0006</c> → <see cref="DvCodedText"/>,
 /// <c>at0013</c> → <see cref="DvText"/>,
 /// <c>at0018</c> → <see cref="DvDateTime"/>).
 /// </para>
 /// <para>
-/// A future slot replaces the table with an OPT-driven generator.
-/// For paths outside the per-at-code table the writer returns
+/// Element <em>names</em> are driven by an optional
+/// <see cref="IOperationalTemplate"/>: when a template is supplied the
+/// writer resolves a freshly created element's name from the OPT's
+/// terminology for the active component archetype, falling back to the
+/// root terminology. When no template is supplied (or the term cannot be
+/// resolved) the writer uses the bare at-code as the element name — the
+/// name string is not load-bearing for the resolver, which compares
+/// values, not names.
+/// </para>
+/// <para>
+/// For paths outside the supported leaf shapes the writer returns
 /// <c>ok=false</c> with a clear "not yet supported in v0.x"
 /// diagnostic — it never silently no-ops.
 /// </para>
@@ -48,20 +57,6 @@ internal static class OpenEhrPathWriter
         RegexOptions.Compiled);
 
     /// <summary>
-    /// Per-at-code element-name table for the vital_status model.
-    /// Names match the canonical Composition fixture so round-trip
-    /// reads/writes do not perturb the Element.Name string the
-    /// resolver does not depend on.
-    /// </summary>
-    private static readonly IReadOnlyDictionary<string, string> s_elementNameByAtCode =
-        new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["at0006"] = "Vital status",
-            ["at0013"] = "Note",
-            ["at0018"] = "Effective",
-        };
-
-    /// <summary>
     /// Write <paramref name="value"/> at <paramref name="path"/>
     /// against <paramref name="composition"/>. Returns
     /// <c>(true, null)</c> on success or <c>(false, error)</c> when
@@ -70,18 +65,21 @@ internal static class OpenEhrPathWriter
     /// <see cref="LogLevel.Debug"/> entry on
     /// <paramref name="logger"/> (if supplied) so the caller can
     /// trace silent ToOpenEhr refusals without instrumenting every
-    /// rule.
+    /// rule. When <paramref name="template"/> is supplied, freshly
+    /// created element names are resolved from its terminology;
+    /// otherwise the bare at-code is used.
     /// </summary>
     public static (bool Ok, string? Error) Write(
         Composition composition,
         string path,
         object? value,
+        IOperationalTemplate? template = null,
         ILogger? logger = null)
     {
         ArgumentNullException.ThrowIfNull(composition);
         ArgumentNullException.ThrowIfNull(path);
 
-        (bool ok, string? err) = WriteCore(composition, path, value);
+        (bool ok, string? err) = WriteCore(composition, path, value, template);
         if (!ok && logger is not null)
         {
             logger.LogDebug("OpenEhrPathWriter refused path '{Path}': {Error}", path, err);
@@ -92,7 +90,8 @@ internal static class OpenEhrPathWriter
     private static (bool Ok, string? Error) WriteCore(
         Composition composition,
         string path,
-        object? value)
+        object? value,
+        IOperationalTemplate? template)
     {
         (object? root, string remainder, string prefix) = NormalizePath(composition, path);
         if (root is null)
@@ -114,7 +113,7 @@ internal static class OpenEhrPathWriter
                 return (false,
                     $"OpenEhrPathWriter: '{prefix}' resolves to {root.GetType().Name}; v0.x only writes against an Evaluation start entry.");
             }
-            return WriteOnArchetype(eval, remainder, value);
+            return WriteOnArchetype(eval, remainder, value, template);
         }
 
         // Composition-rooted paths target the Composition itself.
@@ -129,8 +128,11 @@ internal static class OpenEhrPathWriter
     private static (bool Ok, string? Error) WriteOnArchetype(
         Evaluation evaluation,
         string remainder,
-        object? value)
+        object? value,
+        IOperationalTemplate? template)
     {
+        string? archetypeId = evaluation.ArchetypeDetails?.ArchetypeId?.Value;
+
         // /data[at0001]/items[atNNNN]
         Match dataMatch = s_dataItemRegex.Match(remainder);
         if (dataMatch.Success)
@@ -142,7 +144,9 @@ internal static class OpenEhrPathWriter
                 setCurrent: tree => evaluation.Data = tree,
                 rootAtCode: rootAt,
                 leafAtCode: leafAt,
-                value: value);
+                value: value,
+                archetypeId: archetypeId,
+                template: template);
         }
 
         // /protocol[at0002]/items[atNNNN]
@@ -156,7 +160,9 @@ internal static class OpenEhrPathWriter
                 setCurrent: tree => evaluation.Protocol = tree,
                 rootAtCode: rootAt,
                 leafAtCode: leafAt,
-                value: value);
+                value: value,
+                archetypeId: archetypeId,
+                template: template);
         }
 
         // /links — append a Link target to evaluation.Links.
@@ -243,7 +249,9 @@ internal static class OpenEhrPathWriter
         Action<ItemTree> setCurrent,
         string rootAtCode,
         string leafAtCode,
-        object? value)
+        object? value,
+        string? archetypeId,
+        IOperationalTemplate? template)
     {
         if (value is not DotnetOpenEhr.Rm.DataTypes.DataValue dv)
         {
@@ -277,9 +285,8 @@ internal static class OpenEhrPathWriter
             return (true, null);
         }
 
-        string elementName = s_elementNameByAtCode.TryGetValue(leafAtCode, out string? n)
-            ? n
-            : leafAtCode;
+        string elementName =
+            template?.ResolveElementName(archetypeId, leafAtCode) ?? leafAtCode;
         Element fresh = new Element
         {
             Name = new DvText { Value = elementName },

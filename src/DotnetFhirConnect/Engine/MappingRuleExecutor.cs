@@ -188,7 +188,7 @@ internal sealed class MappingRuleExecutor
         {
             return;
         }
-        (bool ok, string? err) = OpenEhrPathWriter.Write(ctx.Composition, rule.With.OpenEhr!, translated, _logger);
+        (bool ok, string? err) = OpenEhrPathWriter.Write(ctx.Composition, rule.With.OpenEhr!, translated, logger: _logger);
         if (!ok)
         {
             _ = err;
@@ -384,7 +384,7 @@ internal sealed class MappingRuleExecutor
             {
                 DotnetOpenEhr.Rm.DataTypes.Text.DvText boxed =
                     new DotnetOpenEhr.Rm.DataTypes.Text.DvText { Value = field.Value };
-                (bool ok, string? err) = OpenEhrPathWriter.Write(ctx.Composition, field.Path, boxed, _logger);
+                (bool ok, string? err) = OpenEhrPathWriter.Write(ctx.Composition, field.Path, boxed, logger: _logger);
                 if (!ok)
                 {
                     _ = err;

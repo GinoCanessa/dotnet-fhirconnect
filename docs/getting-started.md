@@ -86,6 +86,45 @@ dotnet fhirconnect transform \
     --output -
 ```
 
+### 4. Transform the other way (FHIR → openEHR)
+
+The engine is bidirectional. `ToOpenEhr` runs the same model rules in
+reverse and emits a canonical openEHR Composition:
+
+```csharp
+string observationJson = File.ReadAllText(
+    "tests/fixtures/vital-status/samples/vital-status.observation.r4.parseable.json");
+
+FhirConnectEngine engine = new FhirConnectEngine(bundle);
+object observation = engine.Adapter.ParseResource(observationJson.AsSpan());
+Composition roundTripped = engine.ToOpenEhr(observation);
+```
+
+From the CLI, the direction flips to `to-openehr` and `--input` now
+takes a FHIR resource:
+
+```bash
+dotnet fhirconnect transform \
+    --direction to-openehr \
+    --mapping tests/fixtures/vital-status \
+    --input tests/fixtures/vital-status/samples/vital-status.observation.r4.parseable.json \
+    --output -
+```
+
+> Use `vital-status.observation.r4.parseable.json` as the input here,
+> **not** `vital-status.observation.r4.json` — the latter is the
+> engine-emitted output sample and lacks `Observation.status: "final"`,
+> so Firely rejects it on the inbound parse (exit code `2`).
+
+**OPT / element names.** Friendly openEHR element names
+(`Vitalstatus`, `Kommentar`, …) are stamped from an operational
+template via the **internal** `ToOpenEhr(object, Composition)` seam.
+The CLI has no `--template` option, so `to-openehr` output above uses
+bare at-code element names. See
+[Limitations & scope](../README.md#limitations--scope).
+
+See the [CLI reference](cli.md) for every verb, flag, and exit code.
+
 ## Adding your own mapping
 
 1. Drop the FHIRconnect YAML files (`<name>.context.yaml`, model
@@ -97,27 +136,19 @@ dotnet fhirconnect transform \
 3. Wire up your input composition shape — typed `Composition` from
    `DotnetOpenEhr.Rm`, canonical JSON via `OpenEhrJson.ParseComposition`,
    or flat JSON via `OpenEhrFlatJson.ParseComposition`.
-4. Pass everything to `R4Engine.ToFhir`.
+4. Pass everything to `R4Engine.ToFhir` (openEHR → FHIR), or to
+   `FhirConnectEngine.ToOpenEhr` for the reverse direction.
 
 If your model file uses rule kinds beyond what `v0.x` supports today
 (see the engine notes in [architecture.md](architecture.md)), the
 engine silently skips the unsupported rules — file an issue or extend
 the rule executor.
 
-## Known v0.x limitations
+## Scope
 
-- **FHIR → openEHR is not implemented.** `ToOpenEhr` throws
-  `NotSupportedException`; `transform --direction to-openehr`
-  returns exit code 3 with an explanatory message.
-- **Extension rules** (`reference`, `slotArchetype`, `extension: add|
-  overwrite|remove`) are loaded but not applied. This means Observations
-  produced from the vital_status mapping lack the `code` /
-  `category` fields that the `KDS_vital_status` extension would
-  otherwise inject. Round-trip semantics depend on Phase 6b.
-- **R4B / R5 adapters are pending stubs.** Constructing one for a
-  bundle whose `spec.version` is `R4B` or `R5` succeeds; calling its
-  methods throws `NotImplementedException` with a release-tagged
-  message.
-- **AOT publish is not supported.** Firely, YamlDotNet, and the
-  DotnetOpenEhr SDK each have reflection-based code paths; the
-  library carries `[RequiresUnreferencedCode]` accordingly.
+`v0.x` is a bidirectional walking skeleton scoped to the
+`EVALUATION.vital_status.v1` mapping. See
+[Limitations & scope](../README.md#limitations--scope) in the README
+for the canonical list (direction-asymmetric fields, vital_status-only
+skeleton bootstrap, R5 widenings, the FHIRPath whitelist, the
+library-only OPT seam, and the AOT posture).

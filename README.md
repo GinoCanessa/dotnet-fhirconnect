@@ -40,6 +40,37 @@ not reverse-walked on `ToOpenEhr`:
   `ToFhir` hop, but no openEHR-side source exists to walk on
   `ToOpenEhr`.
 
+## Limitations & scope
+
+This is the **canonical** scope statement for `v0.x`. Other docs link
+back here rather than restating it.
+
+- **Direction-asymmetric fields.** Populated on `ToFhir` but not
+  reverse-walked on `ToOpenEhr` (see [Bidirectional support](#bidirectional-support)
+  above): `link`-driven references (`partOf`, `basedOn`, `focus`,
+  `case`, `hasMember`); the `performer` collapse; and the Phase 6b
+  extension-injected `code` / `category` constants.
+- **Skeleton bootstrap is vital_status-only.** `ToOpenEhr(object)`
+  builds a Composition skeleton only for `EVALUATION.vital_status.v1`;
+  other archetypes require the internal `ToOpenEhr(object, Composition)`
+  overload with a caller-supplied skeleton.
+- **R5 widenings out of scope.** R5's `effective` widening into
+  `Reference(MolecularSequence)` and R5's restructured `Encounter`
+  fields (`class` / `reasonCode` rename / `subjectStatus`) are not
+  handled; the R5 adapter mirrors R4's switch arms exactly.
+- **FHIRPath normaliser is narrow.** The Phase 7 normaliser whitelists
+  `.ofType(<Type>)` only; `where(...)`, `as(...)`, `extension(...)`,
+  etc. throw.
+- **CLI emits bare at-code element names.** Friendly openEHR
+  `Element.Name` values come from an operational template through the
+  **library-only** `ToOpenEhr(object, Composition)` seam
+  (`IOperationalTemplate`). The CLI exposes no `--template` option, so
+  `transform --direction to-openehr` output carries bare at-code
+  element names.
+- **Not AOT-publishable.** Firely, YamlDotNet, and the DotnetOpenEhr
+  SDK each have reflection-based code paths; the library carries
+  `[RequiresUnreferencedCode]` accordingly.
+
 ## Quickstart — library
 
 ```csharp

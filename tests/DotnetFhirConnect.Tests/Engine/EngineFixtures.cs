@@ -20,6 +20,9 @@ internal static class EngineFixtures
     public static string ObservationFile => Path.Combine(
         FixtureRoot, "samples", "vital-status.observation.r4.json");
 
+    public static string OptFixturePath => Path.Combine(
+        FixtureRoot, "templates", "KDS_Vitalstatus.opt");
+
     /// <summary>
     /// The vendored vital_status v1 mapping bundle plus the KDS
     /// project context + extensions. Phase 6a only applies model
@@ -45,5 +48,17 @@ internal static class EngineFixtures
         string json = File.ReadAllText(CompositionFile);
         return OpenEhrJson.ParseComposition(json)
             ?? throw new System.InvalidOperationException("Composition fixture parse returned null.");
+    }
+
+    /// <summary>
+    /// Load the vendored <c>KDS_Vitalstatus.opt</c> operational template
+    /// via the engine's internal loader. Used by the OPT-backed writer
+    /// acceptance tests to drive German element names.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode(
+        "Loads OPT1.4 XML via DotnetOpenEhr.Templates; not AOT-publishable in v0.x.")]
+    public static DotnetFhirConnect.Engine.IOperationalTemplate LoadOperationalTemplate()
+    {
+        return DotnetFhirConnect.Engine.OperationalTemplateLoader.Load(OptFixturePath);
     }
 }

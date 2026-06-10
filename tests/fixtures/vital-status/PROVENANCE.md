@@ -84,6 +84,15 @@ under the vendored mapping bundle. The v0.x bundle does not write
 `Observation.status`, so the file omits the field (per the
 no-fake-data policy adopted in slot `0605-03`).
 
+As of 2026-06-10 the canonical composition's three writer-produced
+**leaf** element names (`at0006`/`at0013`/`at0018`) mirror the vendored
+OPT's German terminology (`original_language=de`): `Vitalstatus`,
+`Kommentar`, `Zeitpunkt der Feststellung`. Container names (the
+EVALUATION entry name and the `ItemTree` `"Tree"` names) are produced by
+the skeleton/writer container path and remain unchanged. Element names
+are not mapped into FHIR R4, so the regenerated
+`vital-status.observation.r4.json` is byte-identical.
+
 The sibling `*.observation.r4.parseable.json` is hand-authored as a
 complete vital_status Observation including `Observation.status`
 (min cardinality 1 in R4) so adapter-side parse / serialize

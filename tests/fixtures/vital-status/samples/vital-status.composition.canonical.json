@@ -139,7 +139,7 @@
         "items": [
           {
             "_type": "ELEMENT",
-            "name": { "_type": "DV_TEXT", "value": "Vital status" },
+            "name": { "_type": "DV_TEXT", "value": "Vitalstatus" },
             "archetype_node_id": "at0006",
             "value": {
               "_type": "DV_CODED_TEXT",
@@ -153,7 +153,7 @@
           },
           {
             "_type": "ELEMENT",
-            "name": { "_type": "DV_TEXT", "value": "Note" },
+            "name": { "_type": "DV_TEXT", "value": "Kommentar" },
             "archetype_node_id": "at0013",
             "value": {
               "_type": "DV_TEXT",
@@ -169,7 +169,7 @@
         "items": [
           {
             "_type": "ELEMENT",
-            "name": { "_type": "DV_TEXT", "value": "Effective" },
+            "name": { "_type": "DV_TEXT", "value": "Zeitpunkt der Feststellung" },
             "archetype_node_id": "at0018",
             "value": {
               "_type": "DV_DATE_TIME",

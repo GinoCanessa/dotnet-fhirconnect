@@ -10,11 +10,10 @@ namespace DotnetFhirConnect.Fhir;
 public static class FhirAdapterFactory
 {
     /// <summary>
-    /// Return a new adapter for <paramref name="release"/>. R4B and
-    /// R5 adapters ship but are stubs in v0.x — calling any of their
-    /// methods throws <see cref="NotImplementedException"/> with a
-    /// release-tagged message so the engine fails fast and loudly
-    /// rather than silently mis-mapping.
+    /// Return a new adapter for <paramref name="release"/>. All three
+    /// releases ship working adapters: R4 via <see cref="R4.R4Adapter"/>,
+    /// and R4B / R5 via implementations sharing a common adapter core
+    /// plus per-release Observation shims.
     /// </summary>
     public static IFhirAdapter Create(FhirRelease release) => release switch
     {

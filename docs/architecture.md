@@ -9,17 +9,30 @@ they exist.
 flowchart LR
     YAML([FHIRconnect YAML]) -->|MappingYamlReader| Loader[Typed mapping graph]
     Loader --> Validator[FhirConnectValidator]
-    Loader --> Engine[FhirConnectEngine]
-    Engine -->|OpenEhrPathResolver| RM[DotnetOpenEhr Reference Model]
-    Engine -->|OpenEhrToFhirTranslator| Translator[Value translation]
-    Translator -->|IFhirAdapter| R4[R4Adapter → Firely R4 POCOs]
-    R4 --> Observation([FHIR R4 Observation])
+    Loader --> Eff[EffectiveMapping<br/>model + extension merge]
+    Eff --> Engine[FhirConnectEngine]
+
+    subgraph forward [openEHR → FHIR]
+        Engine -->|OpenEhrPathResolver| RM[DotnetOpenEhr RM]
+        RM -->|OpenEhrToFhirTranslator| FW[Value translation]
+        FW -->|IFhirAdapter| R4out[R4/R4B/R5 adapter → Firely POCOs]
+        R4out --> Observation([FHIR Observation])
+    end
+
+    subgraph reverse [FHIR → openEHR]
+        FhirIn([FHIR resource]) -->|IFhirAdapter| Engine
+        Engine -->|FhirToOpenEhrTranslator| RW[Value narrowing]
+        RW -->|OpenEhrPathWriter| Skel[SkeletonBuilder Composition]
+        Skel --> Comp([openEHR Composition])
+    end
 ```
 
-The forward (openEHR → FHIR) direction is end-to-end today. The
-reverse direction is documented in [getting-started.md](getting-started.md#known-v0x-limitations);
-the seams below are designed to support it once an inverse path
-resolver lands.
+Both directions are implemented for the `EVALUATION.vital_status.v1`
+scope: `ToFhir` walks the `EffectiveMapping` forward, and `ToOpenEhr`
+runs the same model rules in reverse over a Composition skeleton. Some
+fields are direction-asymmetric — see
+[Limitations & scope](../README.md#limitations--scope) for the
+canonical list.
 
 ## Layered units
 
@@ -57,13 +70,17 @@ resolver lands.
 - `R4Adapter` implements parse/serialize/create + a switch-driven
   path resolver for the `Observation` properties the vital_status
   walking-skeleton mapping touches.
-- `R4BAdapter` and `R5Adapter` are pending stubs that throw
-  `NotImplementedException` with release-tagged messages.
+- `R4BAdapter` and `R5Adapter` are **implemented** `IFhirAdapter`s, not
+  stubs. They share a release-agnostic `AdapterCore` plus per-release
+  Observation shims (`Fhir/R4B/R4BAdapter.cs`, `Fhir/R5/R5Adapter.cs`,
+  `Fhir/AdapterCore.cs`, `Fhir/AdapterShims.cs`); the `object`-typed
+  seam keeps the engine release-agnostic across all three.
 - `FhirAdapterFactory.Create(FhirRelease)` picks the right
   implementation from the bundle's `spec.version`.
-- Typed convenience facades (`R4Engine` today; `R4BEngine` /
-  `R5Engine` when those adapters land) layer typed `Resource`
-  returns on top of the `object`-typed core.
+- A typed convenience facade (`R4Engine`) layers typed `Resource`
+  returns on top of the `object`-typed core. R4B and R5 are served
+  today through the `object`-typed `FhirConnectEngine` directly (no
+  dedicated typed facade yet).
 
 ### 4. Engine (`DotnetFhirConnect` + `DotnetFhirConnect.Engine`)
 
@@ -85,6 +102,25 @@ resolver lands.
   shapes the R4 adapter writers expect — `DvCodedText →
   CodeableConcept`, `DvDateTime → FhirDateTime`, `DvEhrUri →
   ResourceReference` with `ehr:///compositions/<uuid>` rewrite.
+- `FhirToOpenEhrTranslator` is the reverse-direction counterpart: it
+  narrows FHIR values back into openEHR `Dv*` types so the writer can
+  place them on the Composition.
+- `OpenEhrPathWriter` writes translated values into the skeleton at the
+  resolved openEHR path and stamps `Element.Name` from the optional OPT
+  seam (bare at-code when no template is supplied).
+- `SkeletonBuilder.ForArchetype` bootstraps the empty Composition that
+  `ToOpenEhr` fills in; the public `ToOpenEhr(object)` overload does
+  this for `EVALUATION.vital_status.v1` only.
+- The **OPT seam** drives friendly element names: `IOperationalTemplate`
+  (the abstraction), `OptTemplateAdapter` (`Engine/OperationalTemplate.cs`,
+  wrapping the SDK template), and `OperationalTemplateLoader` (over the
+  SDK `Opt14XmlParser`). No template ⇒ bare at-code element names. The
+  seam is library-only; the CLI exposes no `--template` option.
+- `EffectiveMapping` (`Mappings/EffectiveMapping.cs`) is the model +
+  extension merge layer. `EffectiveMapping.Build` folds the Phase 6b
+  extension rules (`reference` / `slotArchetype` / `extension: add |
+  overwrite | remove`) into the model mapping at engine construction;
+  the executor then walks the merged result in both directions.
 
 ## CLI seam (`DotnetFhirConnect.Cli`)
 
@@ -131,3 +167,10 @@ resolver lands.
   an assignment language. Routing writes through it requires the
   ElementModel adapter dance which adds AOT-warning surface for
   zero v0.x benefit.
+- **One `object`-typed core serves all three releases.** Rather than
+  fork the engine per release, `AdapterCore` + per-release Observation
+  shims back a single `object`-typed `IFhirAdapter`, so R4, R4B, and R5
+  share the same rule executor. The OPT seam is deliberately
+  library-only — the CLI emits bare at-code element names — keeping the
+  command-line surface small while the typed library retains the
+  friendly-name path.

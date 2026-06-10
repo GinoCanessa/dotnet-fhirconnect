@@ -33,6 +33,7 @@ public sealed class FhirConnectEngine
     private readonly IFhirAdapter _adapter;
     private readonly EffectiveMapping _effectiveMapping;
     private readonly ILogger<FhirConnectEngine> _logger;
+    private readonly IOperationalTemplate? _template;
 
     /// <summary>
     /// Initialize the engine with a pre-loaded bundle. The bundle
@@ -63,6 +64,37 @@ public sealed class FhirConnectEngine
     }
 
     /// <summary>
+    /// Internal seam: initialize the engine with an optional operational
+    /// template that drives openEHR element names on the ToOpenEhr path.
+    /// The adapter is still chosen from <c>spec.version</c>; only element
+    /// naming changes. Kept <c>internal</c> because the library ships no
+    /// public OPT-loading API in v0.x.
+    /// </summary>
+    /// <param name="bundle">Pre-loaded FHIRconnect mapping bundle.</param>
+    /// <param name="template">Operational template used to resolve openEHR
+    /// element names, or <c>null</c> to fall back to bare at-codes.</param>
+    /// <param name="logger">Optional logger; defaults to
+    /// <see cref="NullLogger{T}.Instance"/>.</param>
+    internal FhirConnectEngine(
+        MappingBundle bundle,
+        IOperationalTemplate? template,
+        ILogger<FhirConnectEngine>? logger = null)
+    {
+        _bundle = bundle ?? throw new ArgumentNullException(nameof(bundle));
+        if (bundle.Models.Count == 0)
+        {
+            throw new ArgumentException(
+                "FhirConnectEngine: bundle contains no model mapping. Load the model directory alongside the project bundle.",
+                nameof(bundle));
+        }
+        _logger = logger ?? NullLogger<FhirConnectEngine>.Instance;
+        _model = SelectStartModel(bundle);
+        _adapter = FhirAdapterFactory.Create(_model.Spec.Version);
+        _effectiveMapping = EffectiveMapping.Build(_model, bundle.Extensions.Values, _logger);
+        _template = template;
+    }
+
+    /// <summary>
     /// Test-only seam: initialize the engine with a caller-supplied
     /// <see cref="IFhirAdapter"/>, bypassing
     /// <see cref="FhirAdapterFactory"/>. Lets the test suite inject a
@@ -74,10 +106,13 @@ public sealed class FhirConnectEngine
     /// bundle's spec.version. Not validated — tests own the wiring.</param>
     /// <param name="logger">Optional logger; defaults to
     /// <see cref="NullLogger{T}.Instance"/>.</param>
+    /// <param name="template">Optional operational template driving
+    /// openEHR element names; defaults to <c>null</c>.</param>
     internal FhirConnectEngine(
         MappingBundle bundle,
         IFhirAdapter adapter,
-        ILogger<FhirConnectEngine>? logger = null)
+        ILogger<FhirConnectEngine>? logger = null,
+        IOperationalTemplate? template = null)
     {
         _bundle = bundle ?? throw new ArgumentNullException(nameof(bundle));
         if (bundle.Models.Count == 0)
@@ -90,6 +125,7 @@ public sealed class FhirConnectEngine
         _model = SelectStartModel(bundle);
         _adapter = adapter ?? throw new ArgumentNullException(nameof(adapter));
         _effectiveMapping = EffectiveMapping.Build(_model, bundle.Extensions.Values, _logger);
+        _template = template;
     }
 
     /// <summary>The FHIR adapter chosen from <c>spec.version</c>.</summary>
@@ -190,7 +226,7 @@ public sealed class FhirConnectEngine
             Resource: resource,
             FhirRoot: "$resource");
 
-        MappingRuleExecutor executor = new MappingRuleExecutor(_adapter, TransformDirection.ToOpenEhr, _logger);
+        MappingRuleExecutor executor = new MappingRuleExecutor(_adapter, TransformDirection.ToOpenEhr, _logger, _template);
         executor.ExecuteAll(ctx, _effectiveMapping.Rules);
         return skeleton;
     }

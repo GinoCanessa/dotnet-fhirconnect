@@ -35,12 +35,18 @@ internal sealed class MappingRuleExecutor
     private readonly IFhirAdapter _adapter;
     private readonly TransformDirection _direction;
     private readonly ILogger? _logger;
+    private readonly IOperationalTemplate? _template;
 
-    public MappingRuleExecutor(IFhirAdapter adapter, TransformDirection direction, ILogger? logger = null)
+    public MappingRuleExecutor(
+        IFhirAdapter adapter,
+        TransformDirection direction,
+        ILogger? logger = null,
+        IOperationalTemplate? template = null)
     {
         _adapter = adapter;
         _direction = direction;
         _logger = logger;
+        _template = template;
     }
 
     [RequiresUnreferencedCode("See FhirConnectEngine.")]
@@ -188,7 +194,7 @@ internal sealed class MappingRuleExecutor
         {
             return;
         }
-        (bool ok, string? err) = OpenEhrPathWriter.Write(ctx.Composition, rule.With.OpenEhr!, translated, logger: _logger);
+        (bool ok, string? err) = OpenEhrPathWriter.Write(ctx.Composition, rule.With.OpenEhr!, translated, _template, _logger);
         if (!ok)
         {
             _ = err;
@@ -384,7 +390,7 @@ internal sealed class MappingRuleExecutor
             {
                 DotnetOpenEhr.Rm.DataTypes.Text.DvText boxed =
                     new DotnetOpenEhr.Rm.DataTypes.Text.DvText { Value = field.Value };
-                (bool ok, string? err) = OpenEhrPathWriter.Write(ctx.Composition, field.Path, boxed, logger: _logger);
+                (bool ok, string? err) = OpenEhrPathWriter.Write(ctx.Composition, field.Path, boxed, _template, _logger);
                 if (!ok)
                 {
                     _ = err;

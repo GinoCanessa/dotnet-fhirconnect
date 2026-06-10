@@ -126,8 +126,8 @@ dotnet-fhirconnect/
 ```
 
 See [`docs/getting-started.md`](docs/getting-started.md) for a longer
-walkthrough and [`docs/architecture.md`](docs/architecture.md) for the
-internal seams.
+walkthrough, [`docs/cli.md`](docs/cli.md) for the CLI reference, and
+[`docs/architecture.md`](docs/architecture.md) for the internal seams.
 
 ## Dependencies
 

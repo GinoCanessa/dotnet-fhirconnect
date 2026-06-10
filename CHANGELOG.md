@@ -41,6 +41,20 @@ All notable changes to this project are documented here, following
 - **CLI** with `validate` and `transform` verbs; `transform
   --direction to-openehr` now wired end-to-end.
 
+### Changed
+
+- **OPT-driven element names.** `OpenEhrPathWriter` now stamps openEHR
+  `Element.Name` from an optional operational template
+  (`IOperationalTemplate`, loaded via the internal
+  `OperationalTemplateLoader` over the SDK `Opt14XmlParser`) instead of a
+  hand-coded at-code→name table. Names resolve from the active component
+  archetype's terminology (then the root terminology); when no template
+  is supplied the bare at-code is used. The vendored German
+  `KDS_Vitalstatus.opt` and the canonical composition fixture use the
+  OPT's German literals (`Vitalstatus` / `Kommentar` / `Zeitpunkt der
+  Feststellung`). Element names are not mapped into FHIR, so emitted R4
+  output is unchanged.
+
 ### Known limitations
 
 - Skeleton bootstrap inside `FhirConnectEngine.ToOpenEhr(object)`

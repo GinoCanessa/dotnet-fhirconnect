@@ -4,6 +4,9 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 
 using System.Runtime.CompilerServices;
+using DotnetFhirConnect.Fhir.R4;
+using DotnetFhirConnect.Fhir.R4B;
+using DotnetFhirConnect.Fhir.R5;
 
 [assembly: InternalsVisibleTo("DotnetFhirConnect.Cli.Tests")]
 
@@ -29,6 +32,14 @@ internal static class Program
     [RequiresUnreferencedCode("Verbs route through the non-AOT library surface.")]
     public static RootCommand BuildRootCommand()
     {
+        // Register every FHIR release adapter up front. The agnostic
+        // to-openehr path never touches a per-release type, so the
+        // per-package module initializers may not have fired; register
+        // here (idempotent) so spec.version selection is deterministic.
+        R4FhirSupport.Register();
+        R4BFhirSupport.Register();
+        R5FhirSupport.Register();
+
         RootCommand root = new RootCommand("Bidirectional openEHR ↔ FHIR transformation via FHIRconnect.");
         root.Add(BuildValidateCommand());
         root.Add(BuildTransformCommand());

@@ -87,9 +87,12 @@ dotnet add package DotnetFhirConnect.FhirR4 --prerelease
 using System.IO;
 using DotnetFhirConnect.Mappings;
 using DotnetFhirConnect.Fhir.R4;
-using DotnetOpenEhr.Rm.Composition;
 using DotnetOpenEhr.Serialization.Json;
 using Hl7.Fhir.Model;
+// openEHR's RM and FHIR both define `Composition`/`Observation`; alias the
+// openEHR side. (This is a normal cross-domain name clash — NOT the per-release
+// `extern alias` workaround the package split removed.)
+using OpenEhrComposition = DotnetOpenEhr.Rm.Composition.Composition;
 
 // 1. Load a FHIRconnect mapping bundle (directory of YAML).
 MappingBundle bundle = MappingBundle.Load("mappings/vital-status/project");
@@ -99,7 +102,7 @@ MappingBundle bundle = MappingBundle.Load("mappings/vital-status/project");
 R4Engine engine = new R4Engine(bundle);
 
 // 3. Hand it a canonical openEHR Composition.
-Composition composition = OpenEhrJson.ParseComposition(File.ReadAllText("input.json"))!;
+OpenEhrComposition composition = OpenEhrJson.ParseComposition(File.ReadAllText("input.json"))!;
 Observation observation = (Observation)engine.ToFhir(composition);
 ```
 

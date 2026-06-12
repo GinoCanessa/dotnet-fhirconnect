@@ -73,7 +73,18 @@ back here rather than restating it.
 
 ## Quickstart — library
 
+Install the package for the FHIR release you target — `DotnetFhirConnect.FhirR4`
+(or `.FhirR4B` / `.FhirR5`). Each binds exactly one Firely release, so you
+write idiomatic Firely code with **no `extern alias`** and no MSBuild
+workarounds. The release-agnostic engine, loader, and validator live in the
+transitively-referenced `DotnetFhirConnect.Core`.
+
+```bash
+dotnet add package DotnetFhirConnect.FhirR4 --prerelease
+```
+
 ```csharp
+using System.IO;
 using DotnetFhirConnect.Mappings;
 using DotnetFhirConnect.Fhir.R4;
 using DotnetOpenEhr.Rm.Composition;
@@ -81,15 +92,21 @@ using DotnetOpenEhr.Serialization.Json;
 using Hl7.Fhir.Model;
 
 // 1. Load a FHIRconnect mapping bundle (directory of YAML).
-MappingBundle bundle = (MappingBundle)FhirConnectMapping.Load("mappings/vital-status/project");
+MappingBundle bundle = MappingBundle.Load("mappings/vital-status/project");
 
-// 2. Construct the typed R4 engine.
+// 2. Construct the typed R4 engine. Touching R4Engine loads the
+//    DotnetFhirConnect.FhirR4 assembly, which self-registers its adapter.
 R4Engine engine = new R4Engine(bundle);
 
 // 3. Hand it a canonical openEHR Composition.
 Composition composition = OpenEhrJson.ParseComposition(File.ReadAllText("input.json"))!;
 Observation observation = (Observation)engine.ToFhir(composition);
 ```
+
+> Reaching for the release-agnostic `FhirConnectEngine` directly (instead of
+> a typed `R4Engine` / `R4BEngine` / `R5Engine` facade)? Call
+> `R4FhirSupport.Register()` (or the R4B / R5 equivalent) first so the
+> adapter for your `spec.version` is registered.
 
 ## Quickstart — CLI
 
@@ -114,7 +131,10 @@ dotnet fhirconnect transform \
 ```text
 dotnet-fhirconnect/
 ├── src/
-│   ├── DotnetFhirConnect/        # core library (NuGet: DotnetFhirConnect)
+│   ├── DotnetFhirConnect.Core/   # release-agnostic engine/loader/validator (NuGet: DotnetFhirConnect.Core; Hl7.Fhir.Base only)
+│   ├── DotnetFhirConnect.FhirR4/ # R4 binding (NuGet: DotnetFhirConnect.FhirR4; Core + Hl7.Fhir.R4)
+│   ├── DotnetFhirConnect.FhirR4B/# R4B binding (NuGet: DotnetFhirConnect.FhirR4B; Core + Hl7.Fhir.R4B)
+│   ├── DotnetFhirConnect.FhirR5/ # R5 binding (NuGet: DotnetFhirConnect.FhirR5; Core + Hl7.Fhir.R5)
 │   └── DotnetFhirConnect.Cli/    # CLI tool (NuGet: DotnetFhirConnect.Cli; dotnet fhirconnect ...)
 ├── tests/
 │   ├── DotnetFhirConnect.Tests/
@@ -129,17 +149,41 @@ See [`docs/getting-started.md`](docs/getting-started.md) for a longer
 walkthrough, [`docs/cli.md`](docs/cli.md) for the CLI reference, and
 [`docs/architecture.md`](docs/architecture.md) for the internal seams.
 
+## Packages
+
+`v0.x` ships four NuGet packages (all at the same lockstep version):
+
+| Package | Role | Pulls in |
+|-|-|-|
+| `DotnetFhirConnect.Core` | Release-agnostic engine, mapping loader, validator, translators. No FHIR model package. | `Hl7.Fhir.Base` |
+| `DotnetFhirConnect.FhirR4` | R4 adapter + typed `R4Engine`. | `Core` + `Hl7.Fhir.R4` |
+| `DotnetFhirConnect.FhirR4B` | R4B adapter + typed `R4BEngine`. | `Core` + `Hl7.Fhir.R4B` |
+| `DotnetFhirConnect.FhirR5` | R5 adapter + typed `R5Engine`. | `Core` + `Hl7.Fhir.R5` |
+
+Reference a single per-release package and you get exactly one Firely model
+assembly transitively — so `Observation`, `Composition`, etc. resolve with no
+`extern alias`. Multi-release hosts reference more than one package and call
+`R{4,4B,5}FhirSupport.Register()` for order-independent `spec.version`
+selection.
+
+> The pre-`0.x` monolithic `DotnetFhirConnect` package id (which referenced
+> all three Firely releases at once and leaked an aliasing requirement onto
+> consumers) is **retired**. There is no compatibility/meta package; depend on
+> `DotnetFhirConnect.Core` plus the per-release binding(s) you need.
+
 ## Dependencies
 
 - **[DotnetOpenEhr](https://www.nuget.org/packages/DotnetOpenEhr)** —
   typed openEHR Reference Model, canonical / flat JSON, AQL path
   resolver. Floats to latest beta in the `2026.*-*` line via
   `Directory.Packages.props`.
+- **[Hl7.Fhir.Base](https://www.nuget.org/packages/Hl7.Fhir.Base)** —
+  release-agnostic Firely layer used by `Core`.
 - **[Hl7.Fhir.R4](https://www.nuget.org/packages/Hl7.Fhir.R4)**,
   **[Hl7.Fhir.R4B](https://www.nuget.org/packages/Hl7.Fhir.R4B)**,
   **[Hl7.Fhir.R5](https://www.nuget.org/packages/Hl7.Fhir.R5)** —
-  Firely .NET SDK; per-release Model assemblies disambiguated by an
-  `extern alias` MSBuild target.
+  Firely .NET SDK; each flows transitively through exactly one
+  per-release package, so consumers need no `extern alias`.
 - **YamlDotNet**, **JsonSchema.Net**, **System.CommandLine**.
 
 ## License

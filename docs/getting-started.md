@@ -9,6 +9,13 @@ openEHR Composition.
 
 - **.NET 10 SDK** (`global.json` pins `10.0.108`, rolls forward to
   the latest installed `10.x.y`).
+- The **per-release package** for the FHIR version you target —
+  `DotnetFhirConnect.FhirR4` (or `.FhirR4B` / `.FhirR5`). It pulls in
+  `DotnetFhirConnect.Core` plus exactly one Firely model package, so
+  `Observation` / `Composition` resolve with no `extern alias`:
+  ```bash
+  dotnet add package DotnetFhirConnect.FhirR4 --prerelease
+  ```
 - An openEHR Composition in canonical JSON form (the repo ships one
   at [`tests/fixtures/vital-status/samples/vital-status.composition.canonical.json`](../tests/fixtures/vital-status/samples/vital-status.composition.canonical.json)).
 - The corresponding FHIRconnect mapping bundle ([`tests/fixtures/vital-status/`](../tests/fixtures/vital-status/) here).
@@ -92,8 +99,14 @@ The engine is bidirectional. `ToOpenEhr` runs the same model rules in
 reverse and emits a canonical openEHR Composition:
 
 ```csharp
+using DotnetFhirConnect.Fhir.R4; // brings R4FhirSupport into scope
+
 string observationJson = File.ReadAllText(
     "tests/fixtures/vital-status/samples/vital-status.observation.r4.parseable.json");
+
+// The release-agnostic FhirConnectEngine touches no per-release type,
+// so register the R4 adapter explicitly before constructing it.
+R4FhirSupport.Register();
 
 FhirConnectEngine engine = new FhirConnectEngine(bundle);
 object observation = engine.Adapter.ParseResource(observationJson.AsSpan());

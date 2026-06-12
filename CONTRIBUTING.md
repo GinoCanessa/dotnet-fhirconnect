@@ -7,13 +7,17 @@ dotnet restore DotnetFhirConnect.slnx
 dotnet build   DotnetFhirConnect.slnx -c Release --no-restore
 dotnet test    DotnetFhirConnect.slnx -c Release --no-build
 
-# Library + CLI packages
-dotnet pack src/DotnetFhirConnect      -c Release --no-build
-dotnet pack src/DotnetFhirConnect.Cli  -c Release --no-build
+# Per-release + Core + CLI packages
+dotnet pack src/DotnetFhirConnect.Core   -c Release --no-build
+dotnet pack src/DotnetFhirConnect.FhirR4  -c Release --no-build
+dotnet pack src/DotnetFhirConnect.FhirR4B -c Release --no-build
+dotnet pack src/DotnetFhirConnect.FhirR5  -c Release --no-build
+dotnet pack src/DotnetFhirConnect.Cli    -c Release --no-build
 ```
 
 The CI workflow at `.github/workflows/ci.yml` runs the same three
-commands on `ubuntu-latest` + `windows-latest`.
+restore/build/test commands (it does not pack) on `ubuntu-latest` +
+`windows-latest`.
 
 ## .NET version
 

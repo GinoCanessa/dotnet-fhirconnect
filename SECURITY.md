@@ -13,7 +13,7 @@ Please use GitHub's
 on this repository:
 
 1. Open the **Security** tab on
-   <https://github.com/ginoc/dotnet-fhirconnect>.
+   <https://github.com/GinoCanessa/dotnet-fhirconnect>.
 2. Click **Report a vulnerability** and fill in the form with as
    much repro detail as you can share safely.
 

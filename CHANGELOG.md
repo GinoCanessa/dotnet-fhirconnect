@@ -74,4 +74,4 @@ All notable changes to this project are documented here, following
   only; `where(...)`, `as(...)`, `extension(...)`, etc. throw.
 - Library is not AOT-publishable.
 
-[Unreleased]: https://github.com/ginoc/dotnet-fhirconnect/compare/main...HEAD
+[Unreleased]: https://github.com/GinoCanessa/dotnet-fhirconnect/compare/main...HEAD

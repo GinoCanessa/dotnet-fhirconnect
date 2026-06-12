@@ -29,8 +29,8 @@
     <Company>Gino Canessa</Company>
     <Copyright>Copyright (c) 2026 Gino Canessa and the DotnetFhirConnect contributors</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/ginoc/dotnet-fhirconnect</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/ginoc/dotnet-fhirconnect</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/GinoCanessa/dotnet-fhirconnect</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/GinoCanessa/dotnet-fhirconnect</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>fhir openehr interoperability fhirconnect mapping health</PackageTags>
     <IncludeSymbols>true</IncludeSymbols>

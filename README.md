@@ -4,7 +4,7 @@
 > mapping specification — bidirectional transformation between openEHR
 > Compositions and HL7 FHIR Resources.
 
-[![Tests](https://github.com/ginoc/dotnet-fhirconnect/actions/workflows/ci.yml/badge.svg)](https://github.com/ginoc/dotnet-fhirconnect/actions/workflows/ci.yml)
+[![Tests](https://github.com/GinoCanessa/dotnet-fhirconnect/actions/workflows/ci.yml/badge.svg)](https://github.com/GinoCanessa/dotnet-fhirconnect/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ## Status — pre-alpha (walking skeleton + bidirectional vital_status)

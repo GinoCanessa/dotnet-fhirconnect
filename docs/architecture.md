@@ -72,15 +72,17 @@ canonical list.
   walking-skeleton mapping touches.
 - `R4BAdapter` and `R5Adapter` are **implemented** `IFhirAdapter`s, not
   stubs. They share a release-agnostic `AdapterCore` plus per-release
-  Observation shims (`Fhir/R4B/R4BAdapter.cs`, `Fhir/R5/R5Adapter.cs`,
-  `Fhir/AdapterCore.cs`, `Fhir/AdapterShims.cs`); the `object`-typed
+  Observation shims (`src/DotnetFhirConnect.FhirR4B/R4BAdapter.cs` +
+  `R4BObservationShim.cs`, `src/DotnetFhirConnect.FhirR5/R5Adapter.cs` +
+  `R5ObservationShim.cs`, with `src/DotnetFhirConnect.Core/Fhir/AdapterCore.cs`
+  and `src/DotnetFhirConnect.Core/Fhir/AdapterShims.cs`); the `object`-typed
   seam keeps the engine release-agnostic across all three.
 - `FhirAdapterFactory.Create(FhirRelease)` picks the right
   implementation from the bundle's `spec.version`.
-- A typed convenience facade (`R4Engine`) layers typed `Resource`
-  returns on top of the `object`-typed core. R4B and R5 are served
-  today through the `object`-typed `FhirConnectEngine` directly (no
-  dedicated typed facade yet).
+- Each release ships a typed convenience facade — `R4Engine` /
+  `R4BEngine` / `R5Engine` — layering typed `Resource` returns on top of
+  the shared `object`-typed core. The `object` seam still backs all
+  three, so the engine stays release-agnostic.
 
 ### 4. Engine (`DotnetFhirConnect` + `DotnetFhirConnect.Engine`)
 

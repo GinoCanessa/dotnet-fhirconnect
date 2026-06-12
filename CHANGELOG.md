@@ -9,21 +9,27 @@ All notable changes to this project are documented here, following
 ### Added
 
 - **Walking-skeleton release.** Initial skeleton of the `dotnet-fhirconnect`
-  repository: library (`DotnetFhirConnect`), CLI tool
-  (`DotnetFhirConnect.Cli` → `dotnet fhirconnect ...`), and xUnit
-  test suite. Targets .NET 10 / C# 14.
+  repository: a `DotnetFhirConnect.Core` package plus the three
+  per-release packages `DotnetFhirConnect.FhirR4` /
+  `DotnetFhirConnect.FhirR4B` / `DotnetFhirConnect.FhirR5` (each binding
+  one Firely release), the CLI tool (`DotnetFhirConnect.Cli` →
+  `dotnet fhirconnect ...`), and an xUnit test suite. Targets
+  .NET 10 / C# 14.
 - **FHIRconnect v1.0.0 loader** with typed record graph for model,
   context, and extension mapping files.
 - **Validator** with JSON-schema evaluation against the patched
   embedded schemas plus a small set of semantic rules
   (`FCV001`–`FCV900`).
 - **R4 / R4B / R5 adapters** built on Firely's
-  `BaseFhirJsonDeserializer` / `BaseFhirJsonSerializer`,
-  disambiguated via an `extern alias` scheme stamped by an
-  MSBuild target onto the per-release `ReferencePath` items.
-- **Engine** (`FhirConnectEngine` + typed `R4Engine` facade) that
+  `BaseFhirJsonDeserializer` / `BaseFhirJsonSerializer`, each binding
+  exactly one Firely release. The per-release packages self-register
+  with the `FhirAdapterFactory` registry via `[ModuleInitializer]` +
+  `R{4,4B,5}FhirSupport.Register()`, and the adapter for the requested
+  release is selected at runtime through that registry.
+- **Engine** (the `object`-typed `FhirConnectEngine` core plus the
+  typed convenience facades `R4Engine` / `R4BEngine` / `R5Engine`) that
   walks an `EffectiveMapping` (model + extension merge layer) in
-  both directions: openEHR Composition → FHIR R4 `Observation`
+  both directions: openEHR Composition → FHIR `Observation`
   and FHIR → openEHR for the `EVALUATION.vital_status.v1`
   scope.
 - **`FhirConnectEngine.ToOpenEhr`** implemented for vital_status —

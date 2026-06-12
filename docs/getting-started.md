@@ -83,6 +83,10 @@ Console.WriteLine($"value:      {((CodeableConcept)observation.Value).Coding.Fir
 Console.WriteLine($"performers: {observation.Performer.Count}");
 ```
 
+For R4B or R5, swap in `R4BEngine` (`DotnetFhirConnect.Fhir.R4B`) or
+`R5Engine` (`DotnetFhirConnect.Fhir.R5`) — drop-in equivalents of
+`R4Engine` returning that release's typed `Resource`.
+
 Same from the CLI, writing the serialised Observation to stdout:
 
 ```bash

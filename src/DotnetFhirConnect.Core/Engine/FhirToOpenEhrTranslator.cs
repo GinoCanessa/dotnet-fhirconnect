@@ -1,4 +1,3 @@
-extern alias coreR4;
 using System;
 using DotnetOpenEhr.Foundation.Iso;
 using DotnetOpenEhr.Rm.DataTypes.Text;
@@ -6,7 +5,6 @@ using DotnetOpenEhr.Rm.DataTypes.Uri;
 using DotnetOpenEhr.Rm.DataTypes.DateTime;
 using DotnetOpenEhr.Rm.Support;
 using Hl7.Fhir.Model;
-using Annotation = coreR4::Hl7.Fhir.Model.Annotation;
 
 namespace DotnetFhirConnect.Engine;
 
@@ -67,9 +65,6 @@ internal static class FhirToOpenEhrTranslator
 
             case Markdown md:
                 return new DvText { Value = md.Value ?? string.Empty };
-
-            case Annotation ann:
-                return new DvText { Value = ann.Text ?? string.Empty };
 
             case ResourceReference rr:
                 return RewriteReference(rr);

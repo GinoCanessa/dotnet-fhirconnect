@@ -10,7 +10,10 @@
     <File Path="nuget.config" />
   </Folder>
   <Folder Name="/src/">
-    <Project Path="src/DotnetFhirConnect/DotnetFhirConnect.csproj" />
+    <Project Path="src/DotnetFhirConnect.Core/DotnetFhirConnect.Core.csproj" />
+    <Project Path="src/DotnetFhirConnect.FhirR4/DotnetFhirConnect.FhirR4.csproj" />
+    <Project Path="src/DotnetFhirConnect.FhirR4B/DotnetFhirConnect.FhirR4B.csproj" />
+    <Project Path="src/DotnetFhirConnect.FhirR5/DotnetFhirConnect.FhirR5.csproj" />
     <Project Path="src/DotnetFhirConnect.Cli/DotnetFhirConnect.Cli.csproj" />
   </Folder>
   <Folder Name="/tests/">

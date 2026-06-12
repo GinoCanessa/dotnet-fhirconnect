@@ -20,8 +20,7 @@ namespace DotnetFhirConnect.Engine;
 internal static class OpenEhrToFhirTranslator
 {
     /// <summary>
-    /// Translate an openEHR value to the form the
-    /// <see cref="DotnetFhirConnect.Fhir.R4.R4Adapter"/>'s
+    /// Translate an openEHR value to the form the FHIR adapter's
     /// <c>TrySetValue</c> expects. The adapter does its own coercion
     /// past the boundary; this method just narrows the option space.
     /// </summary>

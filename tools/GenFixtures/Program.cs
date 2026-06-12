@@ -1,4 +1,3 @@
-extern alias coreR4;
 using System;
 using System.IO;
 using System.Text;

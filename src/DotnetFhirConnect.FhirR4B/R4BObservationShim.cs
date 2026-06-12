@@ -1,23 +1,19 @@
-extern alias coreR4B;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
-using Annotation = coreR4B::Hl7.Fhir.Model.Annotation;
-using Observation = coreR4B::Hl7.Fhir.Model.Observation;
 
 namespace DotnetFhirConnect.Fhir.R4B;
 
 /// <summary>
 /// R4B implementation of <see cref="IObservationShim"/>. See
-/// <c>R4ObservationShim</c> for the contract — the only difference
-/// is the <c>extern alias coreR4B</c> binding.
+/// <c>R4ObservationShim</c> for the contract.
 /// </summary>
 internal sealed class R4BObservationShim : IObservationShim
 {
     private static readonly Hl7.Fhir.Introspection.ModelInspector s_inspector =
-        coreR4B::Hl7.Fhir.Model.ModelInfo.ModelInspector;
+        Hl7.Fhir.Model.ModelInfo.ModelInspector;
     private static readonly BaseFhirJsonDeserializer s_deserializer =
         new BaseFhirJsonDeserializer(s_inspector);
     private static readonly BaseFhirJsonSerializer s_serializer =

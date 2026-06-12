@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>DotnetFhirConnect.FhirR4</RootNamespace>
+    <AssemblyName>DotnetFhirConnect.FhirR4</AssemblyName>
+    <PackageId>DotnetFhirConnect.FhirR4</PackageId>
+    <Description>
+      HL7 FHIR R4 binding for DotnetFhirConnect. References
+      DotnetFhirConnect.Core plus Hl7.Fhir.R4, providing the R4
+      adapter and the typed R4Engine facade. Reference this single
+      package for idiomatic, alias-free R4 transformations.
+    </Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotnetFhirConnect.Core\DotnetFhirConnect.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Hl7.Fhir.R4" />
+  </ItemGroup>
+
+</Project>

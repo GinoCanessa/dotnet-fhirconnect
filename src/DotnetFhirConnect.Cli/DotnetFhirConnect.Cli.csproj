@@ -20,7 +20,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DotnetFhirConnect\DotnetFhirConnect.csproj" />
+    <ProjectReference Include="..\DotnetFhirConnect.FhirR4\DotnetFhirConnect.FhirR4.csproj" />
+    <ProjectReference Include="..\DotnetFhirConnect.FhirR4B\DotnetFhirConnect.FhirR4B.csproj" />
+    <ProjectReference Include="..\DotnetFhirConnect.FhirR5\DotnetFhirConnect.FhirR5.csproj" />
   </ItemGroup>
 
 </Project>

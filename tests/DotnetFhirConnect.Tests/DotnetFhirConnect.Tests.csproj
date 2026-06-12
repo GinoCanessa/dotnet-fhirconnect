@@ -16,7 +16,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\DotnetFhirConnect\DotnetFhirConnect.csproj" />
+    <ProjectReference Include="..\..\src\DotnetFhirConnect.FhirR4\DotnetFhirConnect.FhirR4.csproj" />
+    <ProjectReference Include="..\..\src\DotnetFhirConnect.FhirR4B\DotnetFhirConnect.FhirR4B.csproj" />
+    <ProjectReference Include="..\..\src\DotnetFhirConnect.FhirR5\DotnetFhirConnect.FhirR5.csproj" />
   </ItemGroup>
 
   <!--

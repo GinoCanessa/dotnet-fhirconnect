@@ -1,6 +1,5 @@
 extern alias coreR4;
 using Observation = coreR4::Hl7.Fhir.Model.Observation;
-using Annotation = coreR4::Hl7.Fhir.Model.Annotation;
 using System;
 using DotnetFhirConnect.Engine;
 using DotnetOpenEhr.Foundation.Iso;
@@ -103,15 +102,6 @@ public sealed class FhirToOpenEhrTranslatorTests
         object? back = FhirToOpenEhrTranslator.Translate(rr);
         DvEhrUri reverted = Assert.IsType<DvEhrUri>(back);
         Assert.Equal(src.Value, reverted.Value);
-    }
-
-    [Fact]
-    public void Annotation_ConvertsToDvText()
-    {
-        Annotation ann = new Annotation { Text = new Markdown("note body") };
-        object? back = FhirToOpenEhrTranslator.Translate(ann);
-        DvText t = Assert.IsType<DvText>(back);
-        Assert.Equal("note body", t.Value);
     }
 
     [Fact]

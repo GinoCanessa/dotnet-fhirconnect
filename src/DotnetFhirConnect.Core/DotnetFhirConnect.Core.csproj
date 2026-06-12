@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>DotnetFhirConnect</RootNamespace>
+    <AssemblyName>DotnetFhirConnect.Core</AssemblyName>
+    <PackageId>DotnetFhirConnect.Core</PackageId>
+    <Description>
+      Release-agnostic core of the .NET FHIRconnect implementation:
+      mapping loader, validator, engine, and translators for
+      bidirectional transformation between openEHR Compositions and
+      HL7 FHIR Resources. Bind one of the DotnetFhirConnect.FhirR4 /
+      .FhirR4B / .FhirR5 packages to add a concrete FHIR release.
+    </Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DotnetOpenEhr" />
+    <PackageReference Include="Hl7.Fhir.Base" />
+    <PackageReference Include="YamlDotNet" />
+    <PackageReference Include="JsonSchema.Net" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="DotnetFhirConnect.Tests" />
+    <InternalsVisibleTo Include="DotnetFhirConnect.FhirR4" />
+    <InternalsVisibleTo Include="DotnetFhirConnect.FhirR4B" />
+    <InternalsVisibleTo Include="DotnetFhirConnect.FhirR5" />
+  </ItemGroup>
+
+  <!--
+    Embed the patched FHIRconnect v1.0.0 JSON schemas as resources so
+    the validator does not depend on the test fixtures folder at
+    runtime. Copied at build time from tests/fixtures/spec-schemas/.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\model-mapping.schema.json">
+      <LogicalName>DotnetFhirConnect.Resources.model-mapping.schema.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\contextual-mapping.schema.json">
+      <LogicalName>DotnetFhirConnect.Resources.contextual-mapping.schema.json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

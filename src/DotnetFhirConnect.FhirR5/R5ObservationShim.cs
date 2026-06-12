@@ -1,25 +1,19 @@
-extern alias coreR4;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
-using Annotation = coreR4::Hl7.Fhir.Model.Annotation;
-using Observation = coreR4::Hl7.Fhir.Model.Observation;
 
-namespace DotnetFhirConnect.Fhir.R4;
+namespace DotnetFhirConnect.Fhir.R5;
 
 /// <summary>
-/// R4 implementation of <see cref="IObservationShim"/>. Casts every
-/// boxed <c>obs</c> argument back to <c>coreR4::Observation</c> and
-/// forwards the typed assignment / read. All field-level logic
-/// (path normalisation, coercion, ResourceReference dispatch) lives
-/// in <see cref="AdapterCore"/>; the shim is only the typed seam.
+/// R5 implementation of <see cref="IObservationShim"/>. See
+/// <c>R4ObservationShim</c> for the contract.
 /// </summary>
-internal sealed class R4ObservationShim : IObservationShim
+internal sealed class R5ObservationShim : IObservationShim
 {
     private static readonly Hl7.Fhir.Introspection.ModelInspector s_inspector =
-        coreR4::Hl7.Fhir.Model.ModelInfo.ModelInspector;
+        Hl7.Fhir.Model.ModelInfo.ModelInspector;
     private static readonly BaseFhirJsonDeserializer s_deserializer =
         new BaseFhirJsonDeserializer(s_inspector);
     private static readonly BaseFhirJsonSerializer s_serializer =
@@ -128,14 +122,14 @@ internal sealed class R4ObservationShim : IObservationShim
     public ResourceReference? GetEncounter(object obs) => ((Observation)obs).Encounter;
 
     [RequiresUnreferencedCode(
-        "Hl7.Fhir.R4 serializers traverse the typed POCO graph and are not currently AOT-clean. "
+        "Hl7.Fhir.R5 serializers traverse the typed POCO graph and are not currently AOT-clean. "
         + "Library is not AOT-publishable in v0.x.")]
     public string SerializeResource(object resource)
     {
         if (resource is not Resource r)
         {
             throw new ArgumentException(
-                $"R4Adapter.SerializeResource: expected Hl7.Fhir.R4.Model.Resource, got {resource?.GetType().FullName ?? "null"}.",
+                $"R5Adapter.SerializeResource: expected Hl7.Fhir.R5.Model.Resource, got {resource?.GetType().FullName ?? "null"}.",
                 nameof(resource));
         }
         return s_serializer.SerializeToString(r);

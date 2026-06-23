@@ -34,7 +34,7 @@
     <PackageVersion Include="Hl7.Fhir.R4B" Version="6.2.0" />
     <PackageVersion Include="Hl7.Fhir.R5" Version="6.2.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7" />
-    <PackageVersion Include="System.CommandLine" Version="3.0.0-preview.4.26230.115" />
+    <PackageVersion Include="System.CommandLine" Version="2.*" />
     <PackageVersion Include="YamlDotNet" Version="18.0.0" />
     <PackageVersion Include="JsonSchema.Net" Version="9.2.1" />
   </ItemGroup>

@@ -126,7 +126,7 @@ canonical list.
 
 ## CLI seam (`DotnetFhirConnect.Cli`)
 
-- `System.CommandLine` v3-preview builds a `RootCommand` with two
+- `System.CommandLine` builds a `RootCommand` with two
   sub-commands: `validate` and `transform`.
 - The verbs are thin wrappers around the library; exit codes follow
   `sysexits.h` (0 success, 1 validation failed, 2 io/parse, 3

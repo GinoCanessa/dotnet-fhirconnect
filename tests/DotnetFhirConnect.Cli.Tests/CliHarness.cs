@@ -6,7 +6,7 @@ namespace DotnetFhirConnect.Cli.Tests;
 
 /// <summary>
 /// Drives <see cref="Program.BuildRootCommand"/> in-process and
-/// captures stdout/stderr through the System.CommandLine v3
+/// captures stdout/stderr through the System.CommandLine
 /// <c>InvocationConfiguration</c> hooks. Returns the exit code
 /// from <c>ParseResult.Invoke</c> — do **not** consult
 /// <c>Environment.ExitCode</c> (which isn't set on in-process
